@@ -4,3 +4,5 @@ sudo cp /etc/fstab /etc/fstab.backup
 sudo blkid /dev/[DEVICE_ID]
 /etc/fstab >> UUID=xxxxx-yyyy-xxxx-yyyy-zxcvbnm /mnt/disks/[MNT_DIR] ext4 discard,defaults,[NOFAIL] 0 2
 mount /dev/sda1  /mnt/
+
+mount -a
