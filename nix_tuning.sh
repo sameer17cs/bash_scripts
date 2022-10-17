@@ -1,11 +1,10 @@
-#! /bin/sh
-
+#!/bin/bash
 ##############################################################################################################################################################
 # @author: Sameer Deshmukh
-#start of script
 # Kernel parameter tuning for better performance during load
 ##############################################################################################################################################################
 
+set -e
 echo 327680000 > /proc/sys/net/core/wmem_max
 echo 327680000 > /proc/sys/net/core/wmem_default
 echo 1310720000 > /proc/sys/net/core/rmem_max
