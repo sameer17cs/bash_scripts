@@ -1,3 +1,3 @@
 ## Add ssh key in linux
- - chmod 400 ~/.ssh/{your_privatekey}
+ - `chmod 400 ~/.ssh/{your_privatekey}`
  - ``eval `ssh-agent -s`; ssh-add ~/.ssh/{your_privatekey}``
