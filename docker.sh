@@ -1,7 +1,7 @@
 ##Author: Sameer Deshmukh
 #!/bin/bash
 set -e
-TYPE=$1
+APP=$1
 
 print_app_options () {
   echo " Valid options are:
