@@ -23,12 +23,12 @@ mount_disk () {
   device_path="/dev/$DEVICE_NAME"
 
   #Disk Format
-  read -p "Disk will be formatted, do you want to continue (Y|y|N|n): " FORMAT_RESPONSE
+  read -p "Do you want  format the disk (it will wipe out the disk), (Y|y|N|n): " FORMAT_RESPONSE
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
     mkfs.ext4 -I 128 $device_path 
     echo "Completed disk format"
   else
-    echo "Skipped disk format, Warning: script will fail if disk is not formatted..."
+    echo "Skipped disk format, Warning: script might fail if disk is not in correct filesystem format..."
   fi
   
   #Disk Mount
