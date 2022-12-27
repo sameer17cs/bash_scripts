@@ -12,3 +12,13 @@
  - script: docker.sh
  - Description: Properly install/uninstall docker
  - Keywords: "docker", "docker-compose"
+
+## Gcloud Firewall: Add your dynamic ip to firewall rules
+ ```
+ ./gcloud_firewall.sh `your firewall rule name`
+ ```
+
+ ## AWS Firewall: Add your dynamic ip to security group & rule
+ ```
+ ./aws_firewall.sh `security group id` `security group rule id`
+ ```
