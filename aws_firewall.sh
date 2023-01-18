@@ -1,4 +1,10 @@
 #!/bin/bash
+
+############################################################################################################################################
+# @author: Sameer Deshmukh
+# Purpose: Update my public IP to Amazon Web service (AWS) ec2 machine firewall configuration
+############################################################################################################################################
+
 set -e
 # update a security group rule allowing 
 # your current IPv4 I.P. to connect on port 22 (SSH)
