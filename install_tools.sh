@@ -93,7 +93,7 @@ setup_elasticsearch () {
 
 setup_redash () {
 
-  REDIS_HOST="localhost:6379"
+  REDIS_HOST="127.0.0.1:6379"
 
   read -p "Enter redash data directory full path: " redash_datadir
   if [ -z "$redash_datadir" ]; then
