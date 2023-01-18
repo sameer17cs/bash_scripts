@@ -92,15 +92,26 @@ setup_elasticsearch () {
 }
 
 setup_redash () {
+
+  REDIS_HOST="localhost:6379"
+
   read -p "Enter redash data directory full path: " redash_datadir
   if [ -z "$redash_datadir" ]; then
     echo "Invalid directory"
     exit 1
   fi
+
+  read -p "Enter redis url: (default: $REDIS_HOST ): " redis_uri
+  if [ ! -z "$redis_uri" ]; then
+    REDIS_HOST=$redis_uri
+  fi
+  echo "Redis host set to: $REDIS_HOST"
   
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $redash_datadir:/app/data \
   -p 5000:5000 \
+  --env REDASH_REDIS_KEY_PREFIX=redash_ \
+  --env REDASH_HOST=$REDIS_HOST
   --name my_redash_server redash/redash
 }
 
@@ -126,8 +137,8 @@ setup_neo4j () {
   --volume $neo4j_datadir/logs:/logs \
   --volume $neo4j_datadir/import:/var/lib/neo4j/import \
   --volume $neo4j_datadir/plugins:/plugins \
-  --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
   -p 7474:7474 -p 7687:7687 \
+  --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
   --name my_neo4j_server neo4j:latest
 }
 
