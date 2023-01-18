@@ -111,7 +111,7 @@ setup_redash () {
   --volume $redash_datadir:/app/data \
   -p 5000:5000 \
   --env REDASH_REDIS_KEY_PREFIX=redash_ \
-  --env REDASH_REDIS_URL=$REDIS_HOST \
+  --env REDASH_REDIS_URL=redis://$REDIS_HOST \
   --name my_redash_server redash/redash
 }
 
