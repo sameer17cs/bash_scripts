@@ -22,8 +22,7 @@ print_app_options () {
        3) mongodb
        4) redis
        5) elasticsearch
-       6) redash
-       7) neo4j
+       6) neo4j
        "
 }
 
@@ -91,30 +90,6 @@ setup_elasticsearch () {
   echo "Not implemented"
 }
 
-setup_redash () {
-
-  REDIS_HOST="127.0.0.1:6379"
-
-  read -p "Enter redash data directory full path: " redash_datadir
-  if [ -z "$redash_datadir" ]; then
-    echo "Invalid directory"
-    exit 1
-  fi
-
-  read -p "Enter redis url: (default: $REDIS_HOST ): " redis_uri
-  if [ ! -z "$redis_uri" ]; then
-    REDIS_HOST=$redis_uri
-  fi
-  echo "Redis host set to: $REDIS_HOST"
-  
-  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-  --volume $redash_datadir:/app/data \
-  -p 5000:5000 \
-  --env REDASH_REDIS_KEY_PREFIX=redash_ \
-  --env REDASH_REDIS_URL=redis://$REDIS_HOST \
-  --name my_redash_server redash/redash
-}
-
 setup_neo4j () {
 
   AUTH_USERNAME="neo4j"
@@ -174,11 +149,6 @@ main () {
       echo "Setting up elasticsearch on docker"
       setup_elasticsearch
       ;;
-
-    redash)
-      echo "Setting up redash on docker"
-      setup_redash
-      ;;  
 
     neo4j)
       echo "Setting up neo4j on docker"
