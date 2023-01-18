@@ -6,6 +6,7 @@ set -e
 # Values to identify sec group and sec group rule
 SECURITY_GROUP_ID=$1
 SECURITY_GROUP_RULE_ID=$2
+PORT_TO_OPEN=$3
 
 CURRENT_DATE=$(date +'%Y-%m-%d')
 
@@ -17,7 +18,7 @@ CURRENT_IP=$(curl --silent https://checkip.amazonaws.com)
 NEW_IPV4_CIDR="${CURRENT_IP}"/32
 
 # updates the public IP in the rule
-aws ec2 modify-security-group-rules --group-id ${SECURITY_GROUP_ID} --security-group-rules SecurityGroupRuleId=${SECURITY_GROUP_RULE_ID},SecurityGroupRule="{CidrIpv4=${NEW_IPV4_CIDR}, IpProtocol=tcp,FromPort=22,ToPort=22,Description=${SECURITY_GROUP_RULE_DESCRIPTION}}"
+aws ec2 modify-security-group-rules --group-id ${SECURITY_GROUP_ID} --security-group-rules SecurityGroupRuleId=${SECURITY_GROUP_RULE_ID},SecurityGroupRule="{CidrIpv4=${NEW_IPV4_CIDR}, IpProtocol=tcp,FromPort=$PORT_TO_OPEN,ToPort=$PORT_TO_OPEN,Description=${SECURITY_GROUP_RULE_DESCRIPTION}}"
 
 # shows the rule updated
 aws ec2 describe-security-group-rules --filter Name="security-group-rule-id",Values="${SECURITY_GROUP_RULE_ID}"
