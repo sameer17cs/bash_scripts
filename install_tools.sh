@@ -114,6 +114,7 @@ setup_neo4j () {
   --volume $neo4j_datadir/plugins:/plugins \
   -p 7474:7474 -p 7687:7687 \
   --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
+  --env NEO4J_apoc_import_file_enabled=true \
   --name my_neo4j_server neo4j:latest
 }
 
