@@ -61,6 +61,8 @@ setup_nginx_certbot() {
 
 setup_mongodb () {
 
+  MONGO_CONTAINER_NAME="my_mongo_server"
+
   read -p "Enter mongodb data directory full path: " mongodb_datadir
   if [ -z "$mongodb_datadir" ]; then
     echo "Invalid directory"
@@ -70,20 +72,29 @@ setup_mongodb () {
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $mongodb_datadir:/data/db \
   -p 27017:27017 \
-  --name my_mongo_server mongo --quiet
+  --name $MONGO_CONTAINER_NAME mongo --quiet
+
+ MONGODB_VERSION=$(docker exec $MONGO_CONTAINER_NAME mongod --version | grep -Po '"version": "\K[^"]+')
+ echo "Mongodb version $MONGODB_VERSION"
 }
 
 setup_redis () {
+
+  REDIS_CONTAINER_NAME="my_redis_server"
   
   read -p "Enter redis data directory full path: " redis_datadir
   if [ -z "$redis_datadir" ]; then
     echo "Invalid directory"
     exit 1
   fi
+
   docker run  --detach --restart unless-stopped \
   --volume $redis_datadir:/data \
   -p 6379:6379 \
-  --name my_redis_server redis --appendonly yes
+  --name $REDIS_CONTAINER_NAME redis --appendonly yes
+
+  REDIS_VERSION=$(docker exec $REDIS_CONTAINER_NAME redis-server -v | cut -d= -f2 | cut -d ' ' -f1)
+  echo "Redis version: $REDIS_VERSION"
 }
 
 setup_elasticsearch () {
@@ -94,6 +105,8 @@ setup_neo4j () {
 
   AUTH_USERNAME="neo4j"
   AUTH_PASSWORD="password"
+  DOCKER_CONTAINER_NAME="my_neo4j_server"
+  PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
 
   read -p "Enter neo4j data directory full path: " neo4j_datadir
   if [ -z "$neo4j_datadir" ]; then
@@ -111,11 +124,23 @@ setup_neo4j () {
   --volume $neo4j_datadir/data:/data \
   --volume $neo4j_datadir/logs:/logs \
   --volume $neo4j_datadir/import:/var/lib/neo4j/import \
-  --volume $neo4j_datadir/plugins:/plugins \
+  --volume $neo4j_datadir/plugins:/var/lib/neo4j/plugins \
   -p 7474:7474 -p 7687:7687 \
   --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
   --env NEO4J_apoc_import_file_enabled=true \
-  --name my_neo4j_server neo4j:latest
+  --name $DOCKER_CONTAINER_NAME neo4j:latest
+
+  NEO4J_VERSION=$(docker exec $DOCKER_CONTAINER_NAME neo4j-admin version | grep -oP '\d+\.\d+(\.\d+)*')
+
+  read -p "Load default plugins (Y|y|N|n)  (default: N) : " load_default_plugins
+  if [[ $load_default_plugins == "Y" || $load_default_plugins == "y" ]]; then
+    ##copy default plugins
+    docker exec $DOCKER_CONTAINER_NAME sh -c "cp /var/lib/neo4j/labs/*.jar /var/lib/neo4j/plugins/"
+    sleep 5
+    docker restart $DOCKER_CONTAINER_NAME
+  fi
+
+  echo "Neo4j version $NEO4J_VERSION"
 }
 
 main () {
