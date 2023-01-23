@@ -8,17 +8,23 @@
  - Description: Parameter tuning for linux system for scaling
  - Keywords: "performance", "scale", "tuning" 
 
- ## Docker
- - script: docker.sh
+ ## Install Docker
+ - script: install_docker.sh
  - Description: Properly install/uninstall docker
  - Keywords: "docker", "docker-compose"
 
-## Gcloud Firewall: Add your dynamic ip to firewall rules
- ```
- ./gcloud_firewall.sh `your firewall rule name`
- ```
+## Install Tools
+ - script: install_tools.sh
+ - Description: Script to install some useful tools via Docker or apt-get
+ - Keywords: "mongodb", "elasticsearch", "redis", "neo4j", "redash", "nginx", "nginx_certbot"
+## GCP Firewall: 
+ - script: ./gcloud_firewall.sh `your firewall rule name`
+ - Description: Add your dynamic ip to firewall rules in gcp
 
- ## AWS Firewall: Add your dynamic ip to security group & rule
- ```
- ./aws_firewall.sh `security group id` `security group rule id`
- ```
+## AWS Firewall: 
+ - script: ./aws_firewall.sh `security group id` `security group rule id` `port number`
+ - Description: Add your dynamic ip to security group in aws
+
+## Directory Distribution
+ - script: ./directory_split.sh
+ - Description: Allows you move split a large directory into smaller directories
