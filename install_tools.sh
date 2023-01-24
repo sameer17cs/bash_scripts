@@ -23,6 +23,7 @@ print_app_options () {
        4) redis
        5) elasticsearch
        6) neo4j
+       7) redash
        "
 }
 
@@ -143,6 +144,39 @@ setup_neo4j () {
   echo "Neo4j version $NEO4J_VERSION"
 }
 
+setup_redash () {
+
+  REDASH_CONTAINER_NAME="my_redash"
+
+  read -p "Enter redash data directory full path: " redash_datadir
+  if [ -z "$redash_datadir" ]; then
+    echo "Invalid directory"
+    exit 1
+  fi
+
+  read -p "Enter redash login email: " redash_login_email
+  if [ -z "$redash_login_email" ]; then
+    echo "Invalid email address"
+    exit 1
+  fi
+
+  read -p "Enter redash login password: " redash_login_password
+  if [ -z "$redash_login_password" ]; then
+    echo "Invalid password"
+    exit 1
+  fi
+
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  --volume $redash_datadir:/app/redash/data \
+  -p 80:5000 \
+  --env REDASH_LOGIN_EMAIL=$redash_login_email \
+  --env REDASH_LOGIN_PASSWORD=$redash_login_password \
+  --name $REDASH_CONTAINER_NAME redash/redash
+
+  REDASH_VERSION=$(docker exec $REDASH_CONTAINER_NAME redash --version)
+  echo "Redash version $REDASH_VERSION"
+}
+
 main () {
   if [ -z "$APP" ]; then
     echo "App type not selected"
@@ -179,6 +213,11 @@ main () {
     neo4j)
       echo "Setting up neo4j on docker"
       setup_neo4j
+      ;;  
+
+    redash)
+      echo "Setting up redash on docker"
+      setup_redash
       ;;  
 
     *)
