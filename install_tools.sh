@@ -161,18 +161,16 @@ setup_redash () {
     exit 1
   fi
 
-  read -p "Enter redis url (default: $REDIS_URL) " redis_input_url
+  read -p "Enter redash login password: " redash_login_password
+  if [ -z "$redash_login_password" ]; then
+    echo "Invalid login password"
+    exit 1
+  fi
+
+  read -p "Enter redis url (default: $REDIS_URL ): " redis_input_url
   if [ ! -z "$redis_input_url" ]; then
     REDIS_URL=$redis_input_url
   fi
-
-  #read mongodb url input, and set it in cache
-  read -p " ---- Enter mongodb URI (default: $MONGO_URI ) ---- " mongo_input_uri
-  if [ ! -z "$mongo_input_uri" ]; then
-    MONGO_URI=$mongo_input_uri
-    echo $mongo_input_uri > $cache_mongouri
-  fi
-  echo "Mongodb uri is $MONGO_URI"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $redash_datadir:/app/redash/data \
