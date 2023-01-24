@@ -168,7 +168,7 @@ setup_redash () {
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $redash_datadir:/app/redash/data \
-  -p 80:5000 \
+  -p 5000:5000 \
   --env REDASH_LOGIN_EMAIL=$redash_login_email \
   --env REDASH_LOGIN_PASSWORD=$redash_login_password \
   --name $REDASH_CONTAINER_NAME redash/redash
