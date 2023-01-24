@@ -177,7 +177,7 @@ setup_redash () {
   -p 5000:5000 \
   --env REDASH_LOGIN_EMAIL=$redash_login_email \
   --env REDASH_LOGIN_PASSWORD=$redash_login_password \
-  --env REDIS_URL=redis://$REDIS_URL
+  --env REDIS_URL=redis://$REDIS_URL \
   --name $REDASH_CONTAINER_NAME redash/redash
 
   REDASH_VERSION=$(docker exec $REDASH_CONTAINER_NAME redash --version)
