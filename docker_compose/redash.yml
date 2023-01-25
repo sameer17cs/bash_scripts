@@ -12,8 +12,6 @@ services:
 
   redis:
     image: redis:5
-    volumes:
-      - /mnt/disk/redis_data:/data
 
   redash:
     image: redash/redash:latest
@@ -23,7 +21,7 @@ services:
     environment:
       - REDASH_DATABASE_URL=postgresql://redash:password@postgres:5432/redash
       - REDASH_REDIS_URL=redis://redis:6379/0
-    ports:
-      - "5000:5000"
     volumes:
       - /mnt/disk/redash_data:/app/redash
+    ports:
+      - "5000:5000"
