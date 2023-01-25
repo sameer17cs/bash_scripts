@@ -17,7 +17,6 @@ services:
 
   redash:
     image: redash/redash:latest
-    command: bash -c "create_db && server"
     depends_on:
       - postgres
       - redis
