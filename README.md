@@ -10,15 +10,15 @@
  - Description: Parameter tuning for linux system for scaling
  - Keywords: "performance", "scale", "tuning" 
 
- ## Install Docker
- - script: install_docker.sh `you_chosen_option`
+ ## Install Docker and related packages
+ - script: docker.sh `you_chosen_option`
  - Description: Properly install/uninstall docker
  - Keywords: "docker", "docker-compose"
 
 ## Install Tools
- - script: install_tools.sh `you_chosen_option`
+ - script: tools_install.sh `you_chosen_option`
  - Description: Script to install some useful tools via Docker or apt-get
- - Keywords: "mongodb", "elasticsearch", "redis", "neo4j", "redash", "nginx", "nginx_certbot"
+ - Keywords: "mongodb", "elasticsearch", "redis", "neo4j", "nginx", "nginx_certbot"
 ## GCP Firewall: 
  - script: gcloud_firewall.sh `your firewall rule name`
  - Description: Add your dynamic ip to firewall rules in gcp

@@ -8,7 +8,6 @@
 #        - mongodb using docker
 #        - redis using docker
 #        - elasticsearch using docker
-#        - redash using docker
 #        - neo4j using docker
 ############################################################################################################################################
 
@@ -23,7 +22,6 @@ print_app_options () {
        4) redis
        5) elasticsearch
        6) neo4j
-       7) redash
        "
 }
 
@@ -144,46 +142,6 @@ setup_neo4j () {
   echo "Neo4j version $NEO4J_VERSION"
 }
 
-setup_redash () {
-
-  REDASH_CONTAINER_NAME="my_redash"
-  REDIS_URL="127.0.0.1:6379"
-
-  read -p "Enter redash data directory full path: " redash_datadir
-  if [ -z "$redash_datadir" ]; then
-    echo "Invalid directory"
-    exit 1
-  fi
-
-  read -p "Enter redash login email: " redash_login_email
-  if [ -z "$redash_login_email" ]; then
-    echo "Invalid email address"
-    exit 1
-  fi
-
-  read -p "Enter redash login password: " redash_login_password
-  if [ -z "$redash_login_password" ]; then
-    echo "Invalid login password"
-    exit 1
-  fi
-
-  read -p "Enter redis url (default: $REDIS_URL ): " redis_input_url
-  if [ ! -z "$redis_input_url" ]; then
-    REDIS_URL=$redis_input_url
-  fi
-
-  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-  --volume $redash_datadir:/app/redash/data \
-  -p 5000:5000 \
-  --env REDASH_LOGIN_EMAIL=$redash_login_email \
-  --env REDASH_LOGIN_PASSWORD=$redash_login_password \
-  --env REDIS_URL=redis://$REDIS_URL \
-  --name $REDASH_CONTAINER_NAME redash/redash
-
-  REDASH_VERSION=$(docker exec $REDASH_CONTAINER_NAME redash --version)
-  echo "Redash version $REDASH_VERSION"
-}
-
 main () {
   if [ -z "$APP" ]; then
     echo "App type not selected"
@@ -220,12 +178,7 @@ main () {
     neo4j)
       echo "Setting up neo4j on docker"
       setup_neo4j
-      ;;  
-
-    redash)
-      echo "Setting up redash on docker"
-      setup_redash
-      ;;  
+      ;;
 
     *)
       echo "Unknown application: $APP"

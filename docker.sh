@@ -2,7 +2,8 @@
 
 ############################################################################################################################################
 # @author: Sameer Deshmukh
-# Purpose: Install docker and related packages
+# Purpose: 1) Install docker and docker-compose
+#          2) Purge docker stack 
 ############################################################################################################################################
 
 set -e
@@ -11,7 +12,7 @@ APP=$1
 print_app_options () {
   echo " Valid options are:
        1) install_docker
-       2) install_compose
+       2) install_docker_compose
        3) purge_stack
        4) purge_docker
        "
