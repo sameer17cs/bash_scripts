@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=redash
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=redash
+    volumes:
+      - /mnt/disk/postres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+
+  redash:
+    image: redash/redash:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - REDASH_DATABASE_URL=postgresql://redash:password@postgres:5432/redash
+      - REDASH_REDIS_URL=redis://redis:6379/0
+
+    volumes:
+      - /path/on/host:/app/redash
+
+    ports:
+      - "5000:5000"
