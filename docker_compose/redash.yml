@@ -21,5 +21,3 @@ services:
       - REDASH_REDIS_URL=redis://redis:6379/0
     ports:
       - "5000:5000"
-    volumes:
-      - /mnt/disk/redash_data:/app/
