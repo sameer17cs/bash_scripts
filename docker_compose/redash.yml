@@ -7,8 +7,6 @@ services:
       - POSTGRES_USER=redash
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=redash
-    volumes:
-      - /mnt/disk/postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:5
@@ -21,7 +19,7 @@ services:
     environment:
       - REDASH_DATABASE_URL=postgresql://redash:password@postgres:5432/redash
       - REDASH_REDIS_URL=redis://redis:6379/0
-    volumes:
-      - /mnt/disk/redash_data:/app/redash
     ports:
       - "5000:5000"
+    volumes:
+      - /mnt/disk/redash_data:/app/
