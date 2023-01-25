@@ -2,14 +2,18 @@ version: '3.7'
 
 services:
   postgres:
-    image: postgres:10
+    image: postgres:latest
     environment:
       - POSTGRES_USER=redash
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=redash
+    volumes:
+      - /mnt/disk/postgres_data:/var/lib/postgresql/data
 
   redis:
-    image: redis:5
+    image: redis:latest
+    volumes:
+      - /mnt/disk/redis_data:/data
 
   redash:
     image: redash/redash:latest
