@@ -12,24 +12,19 @@ PARENT_DIR=''
 NUM_SUB_DIRS=1
 SUB_DIRECTORY_PREFIX_="subdir_"
 
-find_smallest_dir() {
-  if [ $NUM_SUB_DIRS -eq 1 ]; then
-    echo 1
-    return
-  fi
-  local size_subdirs=()
+get_smallest_directory() {
+  local smallest_size=0
+  local smallest_dir=""
   for i in $(seq 1 $NUM_SUB_DIRS); do
-    size_subdirs[$i]=$(du -s "$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i" | awk '{print $1}')
-  done
-  local min_size=${size_subdirs[1]}
-  local min_index=1
-  for i in $(seq 2 $NUM_SUB_DIRS); do
-    if [ ${size_subdirs[$i]} -lt $min_size ]; then
-      min_size=${size_subdirs[$i]}
-      min_index=$i
+    local curr_dir="$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i"
+    local curr_size=$(du -s "$curr_dir" | awk '{print $1}')
+    if [ $i -eq 1 ] || [ $curr_size -lt $smallest_size ]; then
+      smallest_size=$curr_size
+      smallest_dir=$curr_dir
     fi
   done
-  echo $min_index
+  echo "$smallest_dir"
+  return
 }
 
 distribute_files() {
@@ -42,16 +37,23 @@ distribute_files() {
   done
 
   # Create temporary directory
-  mkdir $temp_dir
+  mkdir $temp_dir || true
 
   # Move all files from parent directory and its sub directories to temporary directory
-  find $PARENT_DIR/ -type f -exec mv {} $temp_dir \;
+  find $PARENT_DIR/ -type f -exec bash -c '
+  src_file="$0"
+  dest_file="'$temp_dir'/$(basename "$0")"
+  if [ "$src_file" != "$dest_file" ]; then
+    mv "$src_file" "$dest_file"
+  fi' {} \;
 
   # Move all files from temporary directory to sub directories
   while [ $(ls -A $temp_dir | wc -l) -gt 0 ]; do
-    min_index=$(find_smallest_dir)
+    smallest_dir=$(get_smallest_directory)
     file=$(ls -A $temp_dir | head -n 1)
-    mv $temp_dir/$file $PARENT_DIR/$SUB_DIRECTORY_PREFIX_$min_index
+
+    echo "moving $file ---> $smallest_dir"
+    mv $temp_dir/$file $smallest_dir
   done
 
   # remove temp directory
