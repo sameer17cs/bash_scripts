@@ -142,6 +142,11 @@ setup_neo4j () {
   echo "Neo4j version $NEO4J_VERSION"
 }
 
+setup_redash () {
+  #first docker compose up
+  #docker-compose -f docker_compose/redash.yml run --rm redash create_db
+}
+
 main () {
   if [ -z "$APP" ]; then
     echo "App type not selected"
@@ -178,6 +183,11 @@ main () {
     neo4j)
       echo "Setting up neo4j on docker"
       setup_neo4j
+      ;;
+
+    redash)
+      echo "Setting up redash on docker-compose"
+      setup_redash
       ;;
 
     *)
