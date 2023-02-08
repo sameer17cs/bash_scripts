@@ -27,7 +27,6 @@ find_smallest_dir() {
     if [ ${size_subdirs[$i]} -lt $min_size ]; then
       min_size=${size_subdirs[$i]}
       min_index=$i
-      break
     fi
   done
   echo $min_index
