@@ -138,11 +138,11 @@ setup_neo4j () {
     sleep 5
     docker restart $DOCKER_CONTAINER_NAME
   fi
-
   echo "Neo4j version $NEO4J_VERSION"
 }
 
 setup_redash () {
+  echo "Not implemented"
   #first docker compose up
   #docker-compose -f docker_compose/redash.yml run --rm redash create_db
 }
