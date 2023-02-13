@@ -145,7 +145,7 @@ setup_neo4j () {
 setup_redash () {
 
   DOCKER_CONTAINER_NAME="my_redash_server"
-  COMPOSE_FILE="docker_compose/redash.yml"
+  COMPOSE_FILE="docker_compose/redash_prod.yml"
 
   #first docker compose up
   read -p "Enter postgres data directory full path: " postgres_datadir
