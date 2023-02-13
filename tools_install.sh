@@ -165,7 +165,7 @@ setup_redash () {
   cp docker_compose/redash.yml $COMPOSE_FILE
   sed -i "s#<replace_with_path_to_postgres_data>#$postgres_datadir#g" $COMPOSE_FILE
   sed -i "s#<replace_with_path_to_redis_data>#$redis_datadir#g" $COMPOSE_FILE
-  sed -i "s#<<replace_with_redash_container_name>>#$DOCKER_CONTAINER_NAME#g" $COMPOSE_FILE
+  sed -i "s#<replace_with_redash_container_name>#$DOCKER_CONTAINER_NAME#g" $COMPOSE_FILE
 
   read -p "Create dbs (Y|y|N|n)  (default: N) : " create_dbs
   if [[ $create_dbs == "Y" || $create_dbs == "y" ]]; then
