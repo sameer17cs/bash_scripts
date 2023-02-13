@@ -22,6 +22,7 @@ print_app_options () {
        4) redis
        5) elasticsearch
        6) neo4j
+       7) redash
        "
 }
 
@@ -144,6 +145,8 @@ setup_neo4j () {
 setup_redash () {
 
   DOCKER_CONTAINER_NAME="my_redash_server"
+  COMPOSE_FILE="docker_compose/redash.yml"
+
   #first docker compose up
   read -p "Enter postgres data directory full path: " postgres_datadir
   if [ -z "$postgres_datadir" ]; then
@@ -158,17 +161,19 @@ setup_redash () {
   fi
 
   #edit compose file
-  sed -i "s#<replace_with_path_to_postgres_data>#$postgres_datadir#g" docker_compose/redash.yml
-  sed -i "s#<replace_with_path_to_redis_data>#$redis_datadir#g" docker_compose/redash.yml
-  sed -i "s#<<replace_with_redash_container_name>>#$DOCKER_CONTAINER_NAME#g" docker_compose/redash.yml
+  rm $COMPOSE_FILE || true
+  cp docker_compose/redash.yml $COMPOSE_FILE
+  sed -i "s#<replace_with_path_to_postgres_data>#$postgres_datadir#g" $COMPOSE_FILE
+  sed -i "s#<replace_with_path_to_redis_data>#$redis_datadir#g" $COMPOSE_FILE
+  sed -i "s#<<replace_with_redash_container_name>>#$DOCKER_CONTAINER_NAME#g" $COMPOSE_FILE
 
   read -p "Create dbs (Y|y|N|n)  (default: N) : " create_dbs
   if [[ $create_dbs == "Y" || $create_dbs == "y" ]]; then
-     docker-compose -f docker_compose/redash.yml run --rm redash create_db
+     docker-compose -f $COMPOSE_FILE run --rm redash create_db
      sleep 5
   fi
   
-  docker-compose -f docker_compose/redash.yml up -d
+  docker-compose -f $COMPOSE_FILE up -d
 
   REDASH_VERSION=$(docker exec -it $DOCKER_CONTAINER_NAME redash version)
   echo "Redash version $REDASH_VERSION"
