@@ -93,7 +93,7 @@ setup_redis () {
   --volume $redis_datadir:/data \
   -p 6379:6379 \
   --name $REDIS_CONTAINER_NAME redis \
-  sysctl vm.overcommit_memory=1 && redis-server --appendonly yes --appendonly yes
+  sysctl vm.overcommit_memory=1 && redis-server --appendonly yes
 
   REDIS_VERSION=$(docker exec $REDIS_CONTAINER_NAME redis-server -v | cut -d= -f2 | cut -d ' ' -f1)
   echo "Redis version: $REDIS_VERSION"
