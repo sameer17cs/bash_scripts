@@ -192,6 +192,8 @@ setup_metabase () {
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $metabase_datadir:/metabase-data \
+  -e MB_DB_FILE=/metabase-data/metabase.db \
+  -e MB_DB_TYPE=h2 \
   -p 5000:3000 \
   --name $DOCKER_CONTAINER_NAME metabase/metabase
 
