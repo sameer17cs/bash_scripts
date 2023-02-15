@@ -195,7 +195,7 @@ setup_metabase () {
   -p 5000:3000 \
   --name $DOCKER_CONTAINER_NAME metabase/metabase
 
-  METABASE_VERSION=$(docker exec metabase /app/bin/run_metabase.sh version)
+  METABASE_VERSION=$(docker exec $DOCKER_CONTAINER_NAME /app/bin/run_metabase.sh version)
   echo "Metabase version $METABASE_VERSION"
 }
 
