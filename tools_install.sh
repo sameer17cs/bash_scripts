@@ -89,11 +89,11 @@ setup_redis () {
     exit 1
   fi
 
-  docker run  --detach --restart unless-stopped \
+  docker run  --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $redis_datadir:/data \
   -p 6379:6379 \
   --name $REDIS_CONTAINER_NAME redis \
-  sysctl vm.overcommit_memory=1 && redis-server --appendonly yes
+  sh -c 'echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && sysctl -p && redis-server --appendonly yes'
 
   REDIS_VERSION=$(docker exec $REDIS_CONTAINER_NAME redis-server -v | cut -d= -f2 | cut -d ' ' -f1)
   echo "Redis version: $REDIS_VERSION"
