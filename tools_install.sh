@@ -95,7 +95,7 @@ setup_redis () {
   --name $REDIS_CONTAINER_NAME redis --appendonly yes
 
   #set defaults
-  docker exec $REDIS_CONTAINER_NAME bash -c 'apt update && apt install -y procps && echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && sysctl -p'
+  #docker exec $REDIS_CONTAINER_NAME bash -c 'apt update && apt install -y procps && echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && sysctl -p'
 
   REDIS_VERSION=$(docker exec $REDIS_CONTAINER_NAME redis-server --version | awk '{print $3}' | cut -d= -f2)
   echo "Redis version: $REDIS_VERSION"
