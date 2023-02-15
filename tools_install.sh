@@ -22,6 +22,8 @@ print_app_options () {
        4) redis
        5) elasticsearch
        6) neo4j
+       7) redash
+       8) metabase
        "
 }
 
@@ -142,9 +144,66 @@ setup_neo4j () {
 }
 
 setup_redash () {
-  echo "Not implemented"
+
+  DOCKER_CONTAINER_NAME="my_redash_server"
+  COMPOSE_FILE="docker_compose/redash_prod.yml"
+
   #first docker compose up
-  #docker-compose -f docker_compose/redash.yml run --rm redash create_db
+  read -p "Enter postgres data directory full path: " postgres_datadir
+  if [ -z "$postgres_datadir" ]; then
+    echo "Invalid directory"
+    exit 1
+  fi
+
+  read -p "Enter redis data directory full path: " redis_datadir
+  if [ -z "$redis_datadir" ]; then
+    echo "Invalid directory"
+    exit 1
+  fi
+
+  #edit compose file
+  rm $COMPOSE_FILE || true
+  cp docker_compose/redash.yml $COMPOSE_FILE
+  sed -i "s#<replace_with_path_to_postgres_data>#$postgres_datadir#g" $COMPOSE_FILE
+  sed -i "s#<replace_with_path_to_redis_data>#$redis_datadir#g" $COMPOSE_FILE
+  sed -i "s#<replace_with_redash_container_name>#$DOCKER_CONTAINER_NAME#g" $COMPOSE_FILE
+
+  read -p "Create dbs (Y|y|N|n)  (default: N) : " create_dbs
+  if [[ $create_dbs == "Y" || $create_dbs == "y" ]]; then
+     docker-compose -f $COMPOSE_FILE run --rm redash create_db
+     sleep 5
+  fi
+  
+  docker-compose -f $COMPOSE_FILE up -d
+
+  REDASH_VERSION=$(docker exec -it $DOCKER_CONTAINER_NAME redash version)
+  echo "Redash version $REDASH_VERSION"
+}
+
+setup_metabase () {
+
+  DOCKER_CONTAINER_NAME="my_metabase_server"
+  AUTH_PASSWORD="password"
+
+  read -p "Enter metabase data directory full path: " metabase_datadir
+  if [ -z "$metabase_datadir" ]; then
+    echo "Invalid directory"
+    exit 1
+  fi
+
+  read -p "Enter metabase admin password (default: $AUTH_PASSWORD ): " metabase_auth_password
+  if [ ! -z "$metabase_auth_password" ]; then
+    AUTH_PASSWORD=$metabase_auth_password
+  fi
+
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  --volume $metabase_datadir:/metabase-data \
+  -p 5000:3000 \
+  --env MB_ADMIN_PASSWORD=$AUTH_PASSWORD \
+  --name $DOCKER_CONTAINER_NAME metabase/metabase
+
+  METABASE_VERSION=$(docker exec metabase /app/bin/run_metabase.sh version)
+  echo "Metabase version $METABASE_VERSION"
 }
 
 main () {
@@ -188,6 +247,11 @@ main () {
     redash)
       echo "Setting up redash on docker-compose"
       setup_redash
+      ;;
+
+    metabase)
+      echo "Setting up metabase on docker"
+      setup_metabase
       ;;
 
     *)
