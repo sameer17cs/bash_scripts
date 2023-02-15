@@ -14,6 +14,11 @@ SECURITY_GROUP_ID=$1
 SECURITY_GROUP_RULE_ID=$2
 PORT_TO_OPEN=$3
 
+if [[ -z "$SECURITY_GROUP_ID" || -z "$SECURITY_GROUP_RULE_ID" || -z "$PORT_TO_OPEN" ]]; then
+    echo "One or more input parameters are empty"
+    exit 1
+fi
+
 CURRENT_DATE=$(date +'%Y-%m-%d')
 
 # description updated
