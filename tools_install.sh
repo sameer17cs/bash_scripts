@@ -183,7 +183,6 @@ setup_redash () {
 setup_metabase () {
 
   DOCKER_CONTAINER_NAME="my_metabase_server"
-  AUTH_PASSWORD="password"
 
   read -p "Enter metabase data directory full path: " metabase_datadir
   if [ -z "$metabase_datadir" ]; then
@@ -191,15 +190,9 @@ setup_metabase () {
     exit 1
   fi
 
-  read -p "Enter metabase admin password (default: $AUTH_PASSWORD ): " metabase_auth_password
-  if [ ! -z "$metabase_auth_password" ]; then
-    AUTH_PASSWORD=$metabase_auth_password
-  fi
-
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $metabase_datadir:/metabase-data \
   -p 5000:3000 \
-  --env MB_ADMIN_PASSWORD=$AUTH_PASSWORD \
   --name $DOCKER_CONTAINER_NAME metabase/metabase
 
   METABASE_VERSION=$(docker exec metabase /app/bin/run_metabase.sh version)
