@@ -111,6 +111,7 @@ setup_neo4j () {
   AUTH_PASSWORD="password"
   DOCKER_CONTAINER_NAME="my_neo4j_server"
   PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
+  MAX_MEMORY_TRASACTION="8g"
 
   read -p "Enter neo4j data directory full path: " neo4j_datadir
   if [ -z "$neo4j_datadir" ]; then
@@ -132,6 +133,7 @@ setup_neo4j () {
   -p 7474:7474 -p 7687:7687 \
   --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
   --env NEO4J_apoc_import_file_enabled=true \
+  --env NEO4J_dbms_memory_transaction_total_max=$MAX_MEMORY_TRASACTION \
   --name $DOCKER_CONTAINER_NAME neo4j:latest
 
   NEO4J_VERSION=$(docker exec $DOCKER_CONTAINER_NAME neo4j-admin version | grep -oP '\d+\.\d+(\.\d+)*')
