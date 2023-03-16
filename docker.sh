@@ -64,7 +64,7 @@ install_docker_registry() {
     -v $SSL_DIR:/certs \
     -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
     -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
-    -p 443:443 \
+    -p 5000:5000 \
     registry:2
 }
 
