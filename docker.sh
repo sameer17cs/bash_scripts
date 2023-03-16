@@ -43,14 +43,6 @@ install_docker_compose() {
 }
 
 install_docker_registry() {
-  SSL_DIR="/path/to/ssl/directory"
-
-  read -p "----- Enter hostname for your registry ----- " REGISTRY_HOSTNAME
-  if [ -z "$REGISTRY_HOSTNAME" ]; then
-    echo "Invalid or empty hostname"
-    exit 1
-  fi
-  echo "Docker registry hostname is $REGISTRY_HOSTNAME"
 
   read -p "----- Enter ssl certificate directory path ----- " SSL_DIR
   if [ -z "$SSL_DIR" ]; then
@@ -62,7 +54,7 @@ install_docker_registry() {
   # Create self-signed SSL certificate
   read -p "----- Generate ssl certificate (Y|y|N|n) ----- " generate_cert
   if [[ $generate_cert == "Y" || $generate_cert == "y" ]]; then
-    openssl req -newkey rsa:4096 -nodes -sha256 -keyout $SSL_DIR/domain.key -x509 -days 365 -out $SSL_DIR/domain.crt -subj "/CN=$REGISTRY_HOSTNAME"
+    openssl req -newkey rsa:4096 -nodes -sha256 -keyout $SSL_DIR/domain.key -x509 -days 365 -out $SSL_DIR/domain.crt
   fi
   
   # Run Docker registry container with SSL
