@@ -13,6 +13,7 @@ print_app_options () {
   echo " Valid options are:
        1) install_docker
        2) install_docker_compose
+       3) install_docker_registry
        3) purge_stack
        4) purge_docker
        "
@@ -39,6 +40,40 @@ install_docker_compose() {
   sudo curl -L https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
   sudo chmod +x /usr/local/bin/docker-compose
   docker-compose --version
+}
+
+install_docker_registry() {
+  SSL_DIR="/path/to/ssl/directory"
+
+  read -p "----- Enter hostname for your registry ----- " REGISTRY_HOSTNAME
+  if [ -z "$REGISTRY_HOSTNAME" ]; then
+    echo "Invalid or empty hostname"
+    exit 1
+  fi
+  echo "Docker registry hostname is $REGISTRY_HOSTNAME"
+
+  read -p "----- Enter ssl certificate directory path ----- " SSL_DIR
+  if [ -z "$SSL_DIR" ]; then
+    echo "Empty ssl dir"
+    exit 1
+  fi
+  echo "SSL directory is $SSL_DIR"
+
+  # Create self-signed SSL certificate
+  read -p "----- Generate ssl certificate (Y|y|N|n) ----- " generate_cert
+  if [[ $generate_cert == "Y" || $generate_cert == "y" ]]; then
+    openssl req -newkey rsa:4096 -nodes -sha256 -keyout $SSL_DIR/domain.key -x509 -days 365 -out $SSL_DIR/domain.crt -subj "/CN=$REGISTRY_HOSTNAME"
+  fi
+  
+  # Run Docker registry container with SSL
+  docker run -d \
+    --restart always \
+    --name registry \
+    -v $SSL_DIR:/certs \
+    -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+    -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+    -p 443:443 \
+    registry:2
 }
 
 purge_stack() {
@@ -78,6 +113,11 @@ main () {
     install_docker_compose)
       echo "Running docker compose install commands"
       install_docker_compose
+      ;;
+
+    install_docker_registry)
+      echo "Running docker registry install commands"
+      install_docker_registry
       ;;
 
     purge_stack)
