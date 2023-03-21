@@ -33,8 +33,14 @@ setup_nginx() {
   sudo apt update -y
   sudo apt install nginx -y
   sudo ufw allow 'Nginx Full'
-  sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
-  sudo cp deploy/config/nginx.conf /etc/nginx/sites-available/default
+  
+  read -p "---- If you want to use custom configuration file, provide filepath (leave empty for default) ----" : nginx_config_loc
+
+  if [ -n "$nginx_config_loc" && -e "$nginx_config_loc" ]; then
+    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
+    sudo cp $nginx_config_loc /etc/nginx/sites-available/default
+  fi
+
   sudo systemctl reload nginx
   sudo systemctl enable nginx
   sudo nginx -t
@@ -43,10 +49,11 @@ setup_nginx() {
 setup_nginx_certbot() {
 
   #read input
-  read -p " ------ copy fresh config from template (Y|y|N|n) ------ (default: N) : " copy_config
-  if [[ $copy_config == "Y" || $copy_config == "y" ]]; then
+  read -p "---- If you want to use custom configuration file, provide filepath (leave empty for default) ----" : nginx_config_loc
+
+  if [ -n "$nginx_config_loc" && -e "$nginx_config_loc" ]; then
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
-    sudo cp deploy/config/nginx.conf /etc/nginx/sites-available/default
+    sudo cp $nginx_config_loc /etc/nginx/sites-available/default
   fi
 
   read -p "Enter Domain name: " domain_name
