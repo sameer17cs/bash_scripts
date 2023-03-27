@@ -36,7 +36,7 @@ setup_nginx() {
   
   read -p "---- If you want to use custom configuration file, provide filepath (leave empty for default) ----: " nginx_config_loc
 
-  if [ -n "$nginx_config_loc" && -e "$nginx_config_loc" ]; then
+  if [ -n "$nginx_config_loc" ] && [ -e "$nginx_config_loc" ]; then
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
     sudo cp $nginx_config_loc /etc/nginx/sites-available/default
   fi
