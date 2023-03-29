@@ -37,8 +37,11 @@ setup_nginx() {
   read -p "---- If you want to use custom configuration file, provide filepath (leave empty for default) ---- : " nginx_config_loc
 
   if [ -n "$nginx_config_loc" ] && [ -e "$nginx_config_loc" ]; then
+    echo "copying configuration file from $nginx_config_loc"
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
     sudo cp $nginx_config_loc /etc/nginx/sites-available/default
+  else 
+    echo "you choose to use default nginx config"
   fi
 
   sudo systemctl reload nginx
@@ -52,8 +55,11 @@ setup_nginx_certbot() {
   read -p "---- If you want to use custom configuration file, provide filepath (leave empty for default) ---- :" nginx_config_loc
 
   if [ -n "$nginx_config_loc" ] && [ -e "$nginx_config_loc" ]; then
+    echo "copying configuration file from $nginx_config_loc"
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
     sudo cp $nginx_config_loc /etc/nginx/sites-available/default
+  else
+    echo "you choose to use default nginx config"
   fi
 
   read -p "Enter Domain name: " domain_name
