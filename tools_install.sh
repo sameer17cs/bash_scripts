@@ -88,7 +88,7 @@ setup_mongodb () {
   -p 27017:27017 \
   --name $MONGO_CONTAINER_NAME mongo --quiet
 
- MONGODB_VERSION=$(docker exec $MONGO_CONTAINER_NAME mongod --version | grep -Po '"version": "\K[^"]+')
+ MONGODB_VERSION=$(docker exec $MONGO_CONTAINER_NAME mongod --version | awk '/version/ {print $3}')
  echo "Mongodb version $MONGODB_VERSION"
 }
 
@@ -115,7 +115,22 @@ setup_redis () {
 }
 
 setup_elasticsearch () {
-  echo "Not implemented"
+
+  ES_CONTAINER_NAME="my_elasticsearch_server"
+
+  read -p "Enter elasticsearch data directory full path: " es_datadir
+  if [ -z "$es_datadir" ]; then
+    echo "Invalid directory"
+    exit 1
+  fi
+
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  -p 9200:9200 -p 9300:9300 \
+  --volume $es_datadir:/usr/share/elasticsearch/data \
+  --env "bootstrap.memory_lock=true" \
+  --env "discovery.type=single-node" \
+  --ulimit memlock=-1:-1 \
+  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:7.17.0
 }
 
 setup_neo4j () {
@@ -210,8 +225,8 @@ setup_metabase () {
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $metabase_datadir:/metabase-data \
-  -e MB_DB_FILE=/metabase-data/metabase.db \
-  -e MB_DB_TYPE=h2 \
+  --env MB_DB_FILE=/metabase-data/metabase.db \
+  --env MB_DB_TYPE=h2 \
   -p 5000:3000 \
   --name $DOCKER_CONTAINER_NAME metabase/metabase
 
