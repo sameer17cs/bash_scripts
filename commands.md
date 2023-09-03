@@ -3,6 +3,6 @@
  - ``eval `ssh-agent -s`; ssh-add ~/.ssh/{your_privatekey}``
 
 ## Resize Filesystem
- - sudo growpart /dev/sda 1 
- - sudo resize2fs /dev/sda
+ - `sudo growpart /dev/sda 1` 
+ - `sudo resize2fs /dev/sda`
 
