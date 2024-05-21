@@ -17,8 +17,6 @@ services:
     volumes:
       - /mnt/disk/elastic:/usr/share/elasticsearch/data  # Custom path for Elasticsearch data on host
     ports:
-      type: 'not_x_content_exception',
-version: '3.7'
       - "9200:9200"
       - "9300:9300"
     networks:
