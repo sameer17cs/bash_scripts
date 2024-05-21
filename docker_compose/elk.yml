@@ -1,0 +1,44 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.21
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms4096m -Xmx4096m"
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - /mnt/disk/elastic:/usr/share/elasticsearch/data  # Custom path for Elasticsearch data on host
+    ports:
+      type: 'not_x_content_exception',
+version: '3.7'
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+version: '3.7'
+      - elastic
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.21
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - /mnt/disk/kibana:/usr/share/kibana/data  # Custom path for Kibana data on host
+    ports:
+      - "7000:5601"  # Custom Kibana port mapping
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+networks:
+  elastic:
+    driver: bridge

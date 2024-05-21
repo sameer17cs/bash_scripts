@@ -130,7 +130,7 @@ setup_elasticsearch () {
   --env "bootstrap.memory_lock=true" \
   --env "discovery.type=single-node" \
   --ulimit memlock=-1:-1 \
-  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:7.17.21
 }
 
 setup_neo4j () {
