@@ -38,10 +38,18 @@ install_docker() {
 
   if [ -z "$docker_version" ]; then
     echo "No version specified, installing the latest Docker version..."
-    sudo apt-get -y install docker-ce
+    sudo apt-get -y install docker-ce docker-ce-cli containerd.io
   else
     echo "Installing Docker version $docker_version..."
-    sudo apt-get -y install docker-ce=$docker_version docker-ce-cli=$docker_version containerd.io
+    available_versions=$(apt-cache madison docker-ce | awk '{print $3}')
+    if echo "$available_versions" | grep -q "^$docker_version\$"; then
+      sudo apt-get -y install docker-ce=$docker_version docker-ce-cli=$docker_version containerd.io
+    else
+      echo "Specified Docker version $docker_version is not available."
+      echo "Available versions are:"
+      echo "$available_versions"
+      exit 1
+    fi
   fi
 
   sudo usermod -aG docker ${USER}
@@ -58,7 +66,13 @@ install_docker_compose() {
     COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
   else
     echo "Installing Docker Compose version $user_compose_version..."
-    COMPOSE_VERSION=$user_compose_version
+    # Verify the provided version exists on GitHub
+    if curl --output /dev/null --silent --head --fail "https://github.com/docker/compose/releases/download/$user_compose_version/docker-compose-$(uname -s)-$(uname -m)"; then
+      COMPOSE_VERSION=$user_compose_version
+    else
+      echo "Specified Docker Compose version $user_compose_version is not available."
+      exit 1
+    fi
   fi
 
   sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
