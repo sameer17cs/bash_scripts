@@ -20,24 +20,48 @@ print_app_options () {
 }
 
 install_docker() {
-  echo "installing docker .."
+  echo "Please enter the Docker version to install (leave empty for the latest version):"
+  read -r docker_version
+
+  echo "Installing Docker..."
+
   sudo systemctl stop docker || true
   sleep 5
+
   sudo apt-get -y update
   sudo apt-get -y install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
   sudo apt update -y
-  sudo apt-cache policy docker-ce
-  sudo apt install docker-ce -y
+
+  if [ -z "$docker_version" ]; then
+    echo "No version specified, installing the latest Docker version..."
+    sudo apt-get -y install docker-ce
+  else
+    echo "Installing Docker version $docker_version..."
+    sudo apt-get -y install docker-ce=$docker_version docker-ce-cli=$docker_version containerd.io
+  fi
+
   sudo usermod -aG docker ${USER}
   sudo systemctl enable docker
   docker --version
 }
 
 install_docker_compose() {
-  COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
-  sudo curl -L https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+  echo "Please enter the Docker Compose version to install (leave empty for the latest version):"
+  read -r user_compose_version
+
+  if [ -z "$user_compose_version" ]; then
+    echo "No version specified, installing the latest Docker Compose version..."
+    COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
+  else
+    echo "Installing Docker Compose version $user_compose_version..."
+    COMPOSE_VERSION=$user_compose_version
+  fi
+
+  sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   sudo chmod +x /usr/local/bin/docker-compose
   docker-compose --version
 }
