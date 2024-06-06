@@ -1,7 +1,7 @@
 #!/bin/bash
 ##############################################################################################################################################################
 # @author: Sameer Deshmukh
-# Purpose: Mount disk to linux machine, enable automount
+# Purpose: Linux operations
 ##############################################################################################################################################################
 
 set -e
@@ -98,7 +98,7 @@ main () {
     echo "---------------------------------------------------"
     
     #call the function
-    "$option_selected"
+    sudo bash -c "source $LIB_SCRIPT; $option_selected"
 
     local ts_end=$(date +%F_%T)
     echo -e "${C_GREEN} Script for $option_selected finished successfully. \n Begin at: $ts_start \n End at: $ts_end${C_DEFAULT}"
