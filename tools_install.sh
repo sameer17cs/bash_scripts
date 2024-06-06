@@ -359,7 +359,7 @@ neo4j () {
 }
 
 redash() {
-  DOCKER_CONTAINER_NAME="redash_server"
+  DOCKER_CONTAINER_NAME="redash"
   COMPOSE_FILE="docker_compose/redash.yml"
 
   # First, prompt for input
