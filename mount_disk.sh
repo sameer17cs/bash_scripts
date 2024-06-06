@@ -29,6 +29,7 @@ mount_disk() {
   
   #Disk Mount
   uuid_for_fstab=`blkid $device_path | awk '{print $2}'`
+  echo $uuid_for_fstab
 
   if [ -z "$uuid_for_fstab" ]; then 
     echo "Disk incorrect Or not initialized/formatted properly, exiting.."
