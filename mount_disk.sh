@@ -22,7 +22,7 @@ mount_disk() {
   prompt_for_input FORMAT_RESPONSE "Do you want format the disk (it will wipe out the disk), (Y|y|N|n)" true
 
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
-    mkfs.ext4 -I 128 $device_path 
+    sudo mkfs.ext4 -I 128 $device_path 
     echo "Completed disk format"
   else
     echo "Skipped disk format, Warning: script might fail if disk is not in correct filesystem format..."
@@ -36,24 +36,24 @@ mount_disk() {
     exit 1
   else
     ##Create mount point
-    mkdir -p $MOUNT_DIR
+    sudo mkdir -p $MOUNT_DIR
     echo "Created directory at mount point"
  
     ##mount disk
-    mount $device_path $MOUNT_DIR
+    sudo mount $device_path $MOUNT_DIR
 
     ##add fstab entry
     line_for_fstab="$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
-    echo -e "$line_for_fstab\n" >> /etc/fstab
+    echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
     echo "Added entry in fstab"
   fi
   
   #Cleanup
-  chown -R $CURRENT_USER:$CURRENT_USER $MOUNT_DIR
+  sudo chown -R $CURRENT_USER:$CURRENT_USER $MOUNT_DIR
   echo "Disk Mount success!"
 
   #Test mount
-  mount -a
+  sudo mount -a
 }
 
 resize_disk() {
@@ -61,7 +61,7 @@ resize_disk() {
   device_path="/dev/$DEVICE_NAME"
   
   echo "Resizing filesystem on $device_path..."
-  resize2fs $device_path
+  sudo resize2fs $device_path
   echo "Filesystem resize completed on $device_path."
 }
 
@@ -99,7 +99,7 @@ main () {
     echo "---------------------------------------------------"
     
     #call the function
-    sudo bash -c "$(declare -f $option_selected); $option_selected $USER"
+    "$option_selected"
 
     local ts_end=$(date +%F_%T)
     echo -e "${C_GREEN} Script for $option_selected finished successfully. \n Begin at: $ts_start \n End at: $ts_end${C_DEFAULT}"
