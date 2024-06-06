@@ -1,41 +1,58 @@
-version: '3.7'
+version: '3.9'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.21
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.3  # Updated to latest version
     container_name: elasticsearch
     environment:
       - node.name=es01
       - cluster.name=es-docker-cluster
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms4096m -Xmx4096m"
+      - "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m"
       - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.http.ssl.enabled=false
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
-      - /mnt/disk/elastic:/usr/share/elasticsearch/data  # Custom path for Elasticsearch data on host
+      - ${ELASTIC_DATA_PATH}:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
       - "9300:9300"
     networks:
-      - elastic
+      - elk
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.17.21
+    image: docker.elastic.co/kibana/kibana:8.5.3  # Updated to latest version
     container_name: kibana
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
     volumes:
-      - /mnt/disk/kibana:/usr/share/kibana/data  # Custom path for Kibana data on host
+      - ${KIBANA_DATA_PATH}:/usr/share/kibana/data
     ports:
-      - "7000:5601"  # Custom Kibana port mapping
+      - "7000:5601"
     depends_on:
       - elasticsearch
     networks:
-      - elastic
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.5.3  # Updated to latest version
+    container_name: logstash
+    volumes:
+      - ${LOGSTASH_CONFIG_PATH}:/usr/share/logstash/config
+      - ${LOGSTASH_PIPELINE_PATH}:/usr/share/logstash/pipeline
+    ports:
+      - "5000:5000"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
 
 networks:
-  elastic:
+  elk:
     driver: bridge
