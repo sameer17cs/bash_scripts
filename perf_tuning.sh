@@ -10,7 +10,6 @@ echo 327680000 > /proc/sys/net/core/wmem_default
 echo 1310720000 > /proc/sys/net/core/rmem_max
 echo 1310720000 > /proc/sys/net/core/rmem_default
 echo 3285814 > /proc/sys/fs/file-max
-echo 1 >/proc/sys/net/ipv4/tcp_tw_recycle
 echo 1 >/proc/sys/net/ipv4/tcp_tw_reuse
 echo 360000 > /proc/sys/net/ipv4/tcp_max_tw_buckets
 echo 15 > /proc/sys/net/ipv4/tcp_fin_timeout
