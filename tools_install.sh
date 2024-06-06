@@ -13,7 +13,7 @@
 
 set -e
 
-LIB_SCRIPT="./_lib.sh"
+LIB_SCRIPT="_lib.sh"
 
 docker_install() {
   echo "Installing Docker..."
@@ -356,7 +356,11 @@ main() {
 
   local option_selected=$1
 
-  source $LIB_SCRIPT
+  # Check if the library script exists in the same directory
+  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local lib_script_path="$SCRIPT_DIR/$LIB_SCRIPT"
+
+  source $lib_script_path
 
   declare -a FUNCTIONS=(
     docker_install
