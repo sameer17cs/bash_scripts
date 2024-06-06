@@ -228,7 +228,7 @@ nginx_certbot() {
 
 mongodb () {
 
-  MONGO_CONTAINER_NAME="mongo_server"
+  MONGO_CONTAINER_NAME="mongodb"
 
   prompt_for_input DATADIR "Enter MongoDB data directory full path" true
 
@@ -259,7 +259,7 @@ mysql() {
 
 redis () {
 
-  REDIS_CONTAINER_NAME="redis_server"
+  REDIS_CONTAINER_NAME="redis"
   
   prompt_for_input DATADIR "Enter Redis data directory full path" true
 
@@ -277,7 +277,7 @@ redis () {
 
 elasticsearch () {
 
-  ES_CONTAINER_NAME="elasticsearch_server"
+  ES_CONTAINER_NAME="elasticsearch"
 
   prompt_for_input DATADIR "Enter Elasticsearch data directory full path" true
 
@@ -318,7 +318,7 @@ neo4j () {
 
   AUTH_USERNAME="neo4j"
   AUTH_PASSWORD="password"
-  DOCKER_CONTAINER_NAME="neo4j_server"
+  DOCKER_CONTAINER_NAME="neo4j"
   PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
   MAX_MEMORY_TRASACTION="8g"
 
@@ -388,7 +388,7 @@ redash() {
 
 metabase () {
 
-  DOCKER_CONTAINER_NAME="metabase_server"
+  DOCKER_CONTAINER_NAME="metabase"
 
   prompt_for_input DATADIR "Enter metabase data directory full path" true
 
