@@ -358,7 +358,7 @@ main() {
 
   # Check if the library script exists in the same directory
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local lib_script_path="$SCRIPT_DIR/$LIB_SCRIPT"
+  local lib_script_path="$script_dir/$LIB_SCRIPT"
 
   echo $lib_script_path
 
