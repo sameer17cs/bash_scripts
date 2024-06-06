@@ -6,24 +6,21 @@
 
 set -e
 
-mount_disk () {
+LIB_SCRIPT="_lib.sh"
+
+mount_disk() {
+
   CURRENT_USER=$1
 
-  read -p "Please enter mount directory full path: " MOUNT_DIR
-  if [ -z "$MOUNT_DIR" ]; then
-    echo "Invalid mount directory input"
-    exit 1
-  fi 
+  prompt_for_input MOUNT_DIR "Please enter mount directory full path" true
 
-  read -p "Please enter device name (run lsblk): " DEVICE_NAME
-  if [ -z "$DEVICE_NAME" ]; then
-    echo "Invalid device name input"
-    exit 1
-  fi
+  prompt_for_input DEVICE_NAME "Please enter device name (run lsblk)" true
+
   device_path="/dev/$DEVICE_NAME"
 
   #Disk Format
-  read -p "Do you want  format the disk (it will wipe out the disk), (Y|y|N|n): " FORMAT_RESPONSE
+  prompt_for_input FORMAT_RESPONSE "Do you want format the disk (it will wipe out the disk), (Y|y|N|n)" true
+
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
     mkfs.ext4 -I 128 $device_path 
     echo "Completed disk format"
@@ -59,10 +56,58 @@ mount_disk () {
   mount -a
 }
 
-main () {
-  CURR_USER="$USER"
-  DECL=`declare -f mount_disk`
-  sudo bash -c "$DECL; mount_disk $CURR_USER" 
+resize_disk() {
+  prompt_for_input DEVICE_NAME "Please enter device name (run lsblk)" true
+  device_path="/dev/$DEVICE_NAME"
+  
+  echo "Resizing filesystem on $device_path..."
+  resize2fs $device_path
+  echo "Filesystem resize completed on $device_path."
 }
 
-main
+add_ssh_key() {
+  prompt_for_input SSH_KEY_PATH "Please enter the full path of your SSH private key" true
+  
+  if [ ! -f "$SSH_KEY_PATH" ]; then
+    echo "The file $SSH_KEY_PATH does not exist."
+    exit 1
+  fi
+
+  chmod 400 "$SSH_KEY_PATH"
+  eval "$(ssh-agent -s)"
+  ssh-add "$SSH_KEY_PATH"
+  echo "SSH key added and permissions set."
+}
+
+main () {
+  local option_selected=$1
+
+  source $LIB_SCRIPT
+
+  declare -a FUNCTIONS=(
+    mount_disk
+    resize_disk
+    add_ssh_key
+  )
+  
+  local ts_start=$(date +%F_%T)
+
+  # Check if function exists & run it, otherwise list options
+  if [[ " ${FUNCTIONS[@]} " =~ " $option_selected " ]]; then
+    echo "---------------------------------------------------"
+    echo -e "\033[0;32m Option selected: $option_selected \033[0m"
+    echo "---------------------------------------------------"
+    
+    #call the function
+    sudo bash -c "$(declare -f $option_selected); $option_selected $USER"
+
+    local ts_end=$(date +%F_%T)
+    echo -e "${C_GREEN} Script for $option_selected finished successfully. \n Begin at: $ts_start \n End at: $ts_end${C_DEFAULT}"
+
+  else
+    echo -e "${C_RED}Unknown option $option_selected, please choose from below options${C_DEFAULT}"
+    _print_array_ "${FUNCTIONS[@]}"
+  fi
+}
+
+main $1
