@@ -234,18 +234,18 @@ mongodb () {
 }
 
 mysql() {
-  MYSQL_CONTAINER_NAME="mysql_server"
+  MYSQL_CONTAINER_NAME="mysql"
 
-  prompt_for_input DATADIR "Enter MySQL data directory full path" true
-  prompt_for_input ROOT_PASSWORD "Enter MySQL root password" true
+  prompt_for_input MYSQL_DATADIR "Enter MySQL data directory full path" true
 
-  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-    --volume $DATADIR:/var/lib/mysql \
-    -e MYSQL_ROOT_PASSWORD=$ROOT_PASSWORD \
+  docker run -d \
+    --name $MYSQL_CONTAINER_NAME \
+    -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
+    -v $MYSQL_DATADIR:/var/lib/mysql \
     -p 3306:3306 \
-    --name $MYSQL_CONTAINER_NAME mysql --default-authentication-plugin=mysql_native_password
+    mysql:latest
 
-  MYSQL_VERSION=$(docker exec $MYSQL_CONTAINER_NAME mysql --version | awk '{print $5}' | awk -F\, '{print $1}')
+  MYSQL_VERSION=$(docker exec $MYSQL_CONTAINER_NAME mysql --version | awk '{print $5}' | awk -F, '{print $1}')
   echo "MySQL version $MYSQL_VERSION"
 }
 
