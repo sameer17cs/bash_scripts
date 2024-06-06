@@ -35,7 +35,7 @@ mount_disk() {
     exit 1
   else
     ##Create mount point
-    mkdir -p $MOUNT_DIR
+    sudo mkdir -p $MOUNT_DIR
     echo "Created directory at mount point"
  
     ##mount disk
@@ -48,6 +48,7 @@ mount_disk() {
   fi
   
   #Cleanup
+  echo "Changing directory owner to $USER"
   sudo chown -R $USER:$USER $MOUNT_DIR
   echo "Disk Mount success!"
 
