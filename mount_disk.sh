@@ -81,8 +81,6 @@ add_ssh_key() {
 main () {
   local option_selected=$1
 
-  source $LIB_SCRIPT
-
   declare -a FUNCTIONS=(
     mount_disk
     resize_disk
@@ -98,7 +96,7 @@ main () {
     echo "---------------------------------------------------"
     
     #call the function
-    sudo bash -c "source $LIB_SCRIPT; $option_selected"
+    sudo bash -c "$(declare -f $option_selected); $(declare -f prompt_for_input); $(declare -f _print_array_); source $LIB_SCRIPT; $option_selected"
 
     local ts_end=$(date +%F_%T)
     echo -e "${C_GREEN} Script for $option_selected finished successfully. \n Begin at: $ts_start \n End at: $ts_end${C_DEFAULT}"
