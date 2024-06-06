@@ -6,11 +6,10 @@
 
 set -e
 
+USER=$(whoami)
 LIB_SCRIPT="_lib.sh"
 
 mount_disk() {
-
-  CURRENT_USER=$1
 
   prompt_for_input MOUNT_DIR "Please enter mount directory full path" true
 
@@ -22,38 +21,38 @@ mount_disk() {
   prompt_for_input FORMAT_RESPONSE "Do you want format the disk (it will wipe out the disk), (Y|y|N|n)" true
 
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
-    sudo mkfs.ext4 -I 128 $device_path 
+    mkfs.ext4 -I 128 $device_path 
     echo "Completed disk format"
   else
     echo "Skipped disk format, Warning: script might fail if disk is not in correct filesystem format..."
   fi
   
   #Disk Mount
-  uuid_for_fstab=`sudo blkid $device_path | awk '{print $2}'`
+  uuid_for_fstab=`blkid $device_path | awk '{print $2}'`
 
   if [ -z "$uuid_for_fstab" ]; then 
     echo "Disk incorrect Or not initialized/formatted properly, exiting.."
     exit 1
   else
     ##Create mount point
-    sudo mkdir -p $MOUNT_DIR
+    mkdir -p $MOUNT_DIR
     echo "Created directory at mount point"
  
     ##mount disk
-    sudo mount $device_path $MOUNT_DIR
+    mount $device_path $MOUNT_DIR
 
     ##add fstab entry
     line_for_fstab="$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
-    echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
+    echo -e "$line_for_fstab\n" | tee -a /etc/fstab
     echo "Added entry in fstab"
   fi
   
   #Cleanup
-  sudo chown -R $CURRENT_USER:$CURRENT_USER $MOUNT_DIR
+  chown -R $USER:$USER $MOUNT_DIR
   echo "Disk Mount success!"
 
   #Test mount
-  sudo mount -a
+  mount -a
 }
 
 resize_disk() {
@@ -61,7 +60,7 @@ resize_disk() {
   device_path="/dev/$DEVICE_NAME"
   
   echo "Resizing filesystem on $device_path..."
-  sudo resize2fs $device_path
+  resize2fs $device_path
   echo "Filesystem resize completed on $device_path."
 }
 
