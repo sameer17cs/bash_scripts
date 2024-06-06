@@ -29,7 +29,7 @@ mount_disk() {
   
   #Disk Mount
   uuid_for_fstab=$(sudo blkid -s UUID -o value $device_path)
-  echo $uuid_for_fstab
+  echo "UUID: $uuid_for_fstab"
 
   if [ -z "$uuid_for_fstab" ]; then 
     echo "Disk incorrect Or not initialized/formatted properly, exiting.."
@@ -44,7 +44,7 @@ mount_disk() {
   sudo mount $device_path $MOUNT_DIR
 
   ##add fstab entry
-  line_for_fstab="$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
+  line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
   echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
   echo "Added entry in fstab"
   
