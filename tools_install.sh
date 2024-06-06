@@ -62,7 +62,7 @@ prompt_for_input() {
   done
 }
 
-docker() {
+docker_install() {
   echo "Installing Docker..."
 
   prompt_for_input DOCKER_VERSION "Version to install (leave empty for the latest version)"
@@ -99,7 +99,7 @@ docker() {
   docker --version
 }
 
-docker_compose() {
+docker_compose_install() {
   prompt_for_input COMPOSE_VERSION "Docker Compose version to install (leave empty for the latest version)"
 
   if [ -z "$COMPOSE_VERSION" ]; then
@@ -400,8 +400,8 @@ main() {
   local option_selected=$1
 
   declare -a FUNCTIONS=(
-    docker
-    docker_compose
+    docker_install
+    docker_compose_install
     docker_registry
     purge_docker
     nginx
