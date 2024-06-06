@@ -298,7 +298,6 @@ elk_stack() {
   echo "Setting up environment for Elasticsearch, Kibana, and Logstash"
   prompt_for_input ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   prompt_for_input ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
-  prompt_for_input ELASTIC_PASSWORD "Enter Elasticsearch root password" true
   prompt_for_input ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
   prompt_for_input KIBANA_DATA_PATH "Enter path for Kibana data" true
   prompt_for_input LOGSTASH_PATH "Enter path for Logstash directory" true

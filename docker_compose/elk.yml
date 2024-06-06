@@ -10,7 +10,6 @@ services:
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m"
       - discovery.type=single-node
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - xpack.security.enabled=false  # Disable security to avoid SSL requirements
       - xpack.security.transport.ssl.enabled=false
       - xpack.security.http.ssl.enabled=false
