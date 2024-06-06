@@ -360,6 +360,8 @@ main() {
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local lib_script_path="$SCRIPT_DIR/$LIB_SCRIPT"
 
+  echo $lib_script_path
+
   source $lib_script_path
 
   declare -a FUNCTIONS=(
