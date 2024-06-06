@@ -80,6 +80,7 @@ add_ssh_key() {
 
 main () {
   local option_selected=$1
+  source $LIB_SCRIPT
 
   declare -a FUNCTIONS=(
     mount_disk
