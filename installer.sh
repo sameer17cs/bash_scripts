@@ -2,13 +2,7 @@
 
 ############################################################################################################################################
 # @author: Sameer Deshmukh
-# Purpose: This script automates deployment of certain tools.
-#        - nginx using apt
-#        - nginx certbot using apt
-#        - mongodb using docker
-#        - redis using docker
-#        - elasticsearch using docker
-#        - neo4j using docker
+# Purpose: This script automates deployment of certain tools using docker or apt packages
 ############################################################################################################################################
 
 set -e
