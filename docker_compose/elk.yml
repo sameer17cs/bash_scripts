@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:latest  # Updated to latest version
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
     container_name: elasticsearch
     environment:
       - node.name=es01
@@ -26,7 +26,7 @@ services:
       - elk
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:latest  # Updated to latest version
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION}
     container_name: kibana
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -40,7 +40,7 @@ services:
       - elk
 
   logstash:
-    image: docker.elastic.co/logstash/logstash:latest
+    image: docker.elastic.co/logstash/logstash:${ELK_VERSION}
     container_name: logstash
     ports:
       - "5000:5000"

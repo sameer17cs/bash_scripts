@@ -296,6 +296,14 @@ elasticsearch () {
 
 elk_stack() {
   echo "Setting up environment for Elasticsearch, Kibana, and Logstash"
+
+  prompt_for_input ELK_VERSION "Enter version for Elasticsearch, Kibana, and Logstash (default: 8.14.0)"
+
+  # Use the default version if ELK_VERSION is empty
+  if [[ -z "$ELK_VERSION" ]]; then
+    ELK_VERSION="8.14.0"
+  fi
+
   prompt_for_input ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   prompt_for_input ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
   prompt_for_input ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
@@ -303,11 +311,11 @@ elk_stack() {
   prompt_for_input LOGSTASH_PATH "Enter path for Logstash directory" true
 
   # Define the Docker Compose file location
-  export COMPOSE_FILE="docker_compose/elk.yml"
+  COMPOSE_FILE="docker_compose/elk.yml"
 
   # Run Docker Compose
   echo "Running Docker Compose for the ELK stack..."
-  docker-compose up -d
+  ELK_VERSION=$ELK_VERSION docker-compose -f $COMPOSE_FILE up -d
 
   echo "ELK stack setup and launch complete."
 }
@@ -357,7 +365,6 @@ neo4j () {
 }
 
 redash() {
-  DOCKER_CONTAINER_NAME="redash"
   COMPOSE_FILE="docker_compose/redash.yml"
 
   # First, prompt for input
@@ -366,7 +373,6 @@ redash() {
   # Set environment variables
   export POSTGRES_DATADIR="${REDASH_DATADIR}/postgres"
   export REDIS_DATADIR="${REDASH_DATADIR}/redis"
-  export DOCKER_CONTAINER_NAME
 
   # Create directories if they don't exist
   mkdir -p $POSTGRES_DATADIR

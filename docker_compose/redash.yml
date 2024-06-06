@@ -19,7 +19,7 @@ services:
 
   redash:
     image: redash/redash:latest
-    container_name: ${DOCKER_CONTAINER_NAME}
+    container_name: redash
     depends_on:
       - postgres
       - redis
