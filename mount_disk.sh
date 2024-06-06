@@ -29,7 +29,7 @@ mount_disk() {
   
   #Disk Mount
   uuid_for_fstab=$(sudo blkid -s UUID -o value $device_path)
-  echo "UUID: $uuid_for_fstab"
+  echo "Device UUID: $uuid_for_fstab"
 
   if [ -z "$uuid_for_fstab" ]; then 
     echo "Disk incorrect Or not initialized/formatted properly, exiting.."
@@ -62,7 +62,7 @@ resize_disk() {
   device_path="/dev/$DEVICE_NAME"
   
   echo "Resizing filesystem on $device_path..."
-  resize2fs $device_path
+  sudo resize2fs $device_path
   echo "Filesystem resize completed on $device_path."
 }
 
