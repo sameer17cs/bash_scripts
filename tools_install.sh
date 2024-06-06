@@ -301,8 +301,7 @@ elk_stack() {
   prompt_for_input ELASTIC_PASSWORD "Enter Elasticsearch root password" true
   prompt_for_input ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
   prompt_for_input KIBANA_DATA_PATH "Enter path for Kibana data" true
-  prompt_for_input LOGSTASH_CONFIG_PATH "Enter path for Logstash config directory" true
-  prompt_for_input LOGSTASH_PIPELINE_PATH "Enter path for Logstash pipeline directory" true
+  prompt_for_input LOGSTASH_PATH "Enter path for Logstash directory" true
 
   # Define the Docker Compose file location
   export COMPOSE_FILE="docker_compose/elk.yml"

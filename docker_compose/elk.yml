@@ -34,7 +34,7 @@ services:
     volumes:
       - ${KIBANA_DATA_PATH}:/usr/share/kibana/data
     ports:
-      - "7000:5601"
+      - "5601:5601"
     depends_on:
       - elasticsearch
     networks:
@@ -44,8 +44,8 @@ services:
     image: docker.elastic.co/logstash/logstash:8.5.3  # Updated to latest version
     container_name: logstash
     volumes:
-      - ${LOGSTASH_CONFIG_PATH}:/usr/share/logstash/config
-      - ${LOGSTASH_PIPELINE_PATH}:/usr/share/logstash/pipeline
+      - ${LOGSTASH_PATH}:/usr/share/logstash/config
+      - ${LOGSTASH_PATH}:/usr/share/logstash/pipeline
     ports:
       - "5000:5000"
     depends_on:
