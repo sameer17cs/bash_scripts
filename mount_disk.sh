@@ -28,26 +28,25 @@ mount_disk() {
   fi
   
   #Disk Mount
-  uuid_for_fstab=`blkid $device_path | awk '{print $2}'`
-  echo "blkid $device_path" 
+  uuid_for_fstab=$(sudo blkid -s UUID -o value $device_path)
   echo $uuid_for_fstab
 
   if [ -z "$uuid_for_fstab" ]; then 
     echo "Disk incorrect Or not initialized/formatted properly, exiting.."
     exit 1
-  else
-    ##Create mount point
-    sudo mkdir -p $MOUNT_DIR
-    echo "Created directory at mount point"
- 
-    ##mount disk
-    sudo mount $device_path $MOUNT_DIR
-
-    ##add fstab entry
-    line_for_fstab="$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
-    echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
-    echo "Added entry in fstab"
   fi
+  
+  ##Create mount point
+  sudo mkdir -p $MOUNT_DIR
+  echo "Created directory at mount point"
+ 
+  ##mount disk
+  sudo mount $device_path $MOUNT_DIR
+
+  ##add fstab entry
+  line_for_fstab="$uuid_for_fstab $MOUNT_DIR ext4 defaults 0 2"
+  echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
+  echo "Added entry in fstab"
   
   #Cleanup
   echo "Changing directory owner to $USER"
