@@ -29,6 +29,7 @@ mount_disk() {
   
   #Disk Mount
   uuid_for_fstab=`blkid $device_path | awk '{print $2}'`
+  echo "blkid $device_path" 
   echo $uuid_for_fstab
 
   if [ -z "$uuid_for_fstab" ]; then 
