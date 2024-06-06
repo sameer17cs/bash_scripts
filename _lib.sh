@@ -29,7 +29,7 @@
 #
 # -------------------------------------------------------------------------
 
-prompt_for_input() {
+_prompt_for_input_() {
   local var_name=$1
   local prompt_message=$2
   local required=$3

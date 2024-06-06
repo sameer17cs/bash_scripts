@@ -12,7 +12,7 @@ LIB_SCRIPT="_lib.sh"
 docker_install() {
   echo "Installing Docker..."
 
-  prompt_for_input DOCKER_VERSION "Version to install (leave empty for the latest version)"
+  _prompt_for_input_ DOCKER_VERSION "Version to install (leave empty for the latest version)"
 
   sudo systemctl stop docker || true
   sleep 5
@@ -47,7 +47,7 @@ docker_install() {
 }
 
 docker_compose_install() {
-  prompt_for_input COMPOSE_VERSION "Docker Compose version to install (leave empty for the latest version)"
+  _prompt_for_input_ COMPOSE_VERSION "Docker Compose version to install (leave empty for the latest version)"
 
   if [ -z "$COMPOSE_VERSION" ]; then
     echo "No version specified, installing the latest Docker Compose version..."
@@ -70,11 +70,11 @@ docker_compose_install() {
 
 docker_registry() {
 
-  prompt_for_input DOCKER_SSL_DIR "Enter SSL certificate directory path" true
+  _prompt_for_input_ DOCKER_SSL_DIR "Enter SSL certificate directory path" true
   echo "SSL directory is $DOCKER_SSL_DIR"
 
   # Create self-signed SSL certificate
-  prompt_for_input GENERATE_DRC "Generate SSL certificate (Y|y|N|n)"
+  _prompt_for_input_ GENERATE_DRC "Generate SSL certificate (Y|y|N|n)"
   if [[ $GENERATE_DRC == "Y" || $GENERATE_DRC == "y" ]]; then
     openssl req -newkey rsa:4096 -nodes -sha256 -keyout $DOCKER_SSL_DIR/domain.key -x509 -days 365 -out $DOCKER_SSL_DIR/domain.crt
   fi
@@ -107,7 +107,7 @@ nginx() {
   sudo apt install nginx -y
   sudo ufw allow 'Nginx Full'
   
-  prompt_for_input NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
+  _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
     echo "copying configuration file from $NGINX_CONFIG_PATH"
@@ -123,7 +123,7 @@ nginx() {
 }
 
 nginx_certbot() {
-  prompt_for_input NGINX_CONFIG_PATH "Nginx configuration filepath (leave empty for default)"
+  _prompt_for_input_ NGINX_CONFIG_PATH "Nginx configuration filepath (leave empty for default)"
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
     echo "Copying configuration file from $NGINX_CONFIG_PATH"
@@ -138,7 +138,7 @@ nginx_certbot() {
 
   # Loop to collect multiple domain names
   while true; do
-    prompt_for_input NGINX_DOMAIN "Enter Domain name (leave empty to finish)"
+    _prompt_for_input_ NGINX_DOMAIN "Enter Domain name (leave empty to finish)"
     
     if [ -z "$NGINX_DOMAIN" ]; then
       break
@@ -169,7 +169,7 @@ mongodb () {
 
   MONGO_CONTAINER_NAME="mongodb"
 
-  prompt_for_input DATADIR "Enter MongoDB data directory full path" true
+  _prompt_for_input_ DATADIR "Enter MongoDB data directory full path" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/data/db \
@@ -183,7 +183,7 @@ mongodb () {
 mysql() {
   MYSQL_CONTAINER_NAME="mysql"
 
-  prompt_for_input MYSQL_DATADIR "Enter MySQL data directory full path" true
+  _prompt_for_input_ MYSQL_DATADIR "Enter MySQL data directory full path" true
 
   docker run -d \
     --name $MYSQL_CONTAINER_NAME \
@@ -200,7 +200,7 @@ redis () {
 
   REDIS_CONTAINER_NAME="redis"
   
-  prompt_for_input DATADIR "Enter Redis data directory full path" true
+  _prompt_for_input_ DATADIR "Enter Redis data directory full path" true
 
   docker run  --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/data \
@@ -218,9 +218,9 @@ elasticsearch () {
 
   ES_CONTAINER_NAME="elasticsearch"
 
-  prompt_for_input DATADIR "Enter Elasticsearch data directory full path" true
+  _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
 
-  prompt_for_input PWD "Enter password for the Elasticsearch root user" true
+  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 9200:9200 -p 9300:9300 \
@@ -236,18 +236,18 @@ elasticsearch () {
 elk_stack() {
   echo "Setting up environment for Elasticsearch, Kibana, and Logstash"
 
-  prompt_for_input ELK_VERSION "Enter version for Elasticsearch, Kibana, and Logstash (default: 8.14.0)"
+  _prompt_for_input_ ELK_VERSION "Enter version for Elasticsearch, Kibana, and Logstash (default: 8.14.0)"
 
   # Use the default version if ELK_VERSION is empty
   if [[ -z "$ELK_VERSION" ]]; then
     ELK_VERSION="8.14.0"
   fi
 
-  prompt_for_input ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
-  prompt_for_input ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
-  prompt_for_input ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
-  prompt_for_input KIBANA_DATA_PATH "Enter path for Kibana data" true
-  prompt_for_input LOGSTASH_PATH "Enter path for Logstash directory" true
+  _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
+  _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
+  _prompt_for_input_ ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
+  _prompt_for_input_ KIBANA_DATA_PATH "Enter path for Kibana data" true
+  _prompt_for_input_ LOGSTASH_PATH "Enter path for Logstash directory" true
 
   # Define the Docker Compose file location
   COMPOSE_FILE="docker_compose/elk.yml"
@@ -267,13 +267,13 @@ neo4j () {
   PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
   MAX_MEMORY_TRASACTION="8g"
 
-  prompt_for_input DATADIR "Enter neo4j data directory full path" true
+  _prompt_for_input_ DATADIR "Enter neo4j data directory full path" true
   if [ -z "$DATADIR" ]; then
     echo "Invalid directory"
     exit 1
   fi
 
-  prompt_for_input PWD "Enter neo4j auth password (default: $AUTH_PASSWORD )"
+  _prompt_for_input_ PWD "Enter neo4j auth password (default: $AUTH_PASSWORD )"
   if [ ! -z "$PWD" ]; then
     AUTH_PASSWORD=$PWD
   fi
@@ -292,7 +292,7 @@ neo4j () {
 
   NEO4J_VERSION=$(docker exec $DOCKER_CONTAINER_NAME neo4j-admin version | grep -oP '\d+\.\d+(\.\d+)*')
 
-  prompt_for_input LOAD_PLUGIN "Load default plugins (Y|y|N|n) (default: N)"
+  _prompt_for_input_ LOAD_PLUGIN "Load default plugins (Y|y|N|n) (default: N)"
 
   if [[ $LOAD_PLUGIN == "Y" || $LOAD_PLUGIN == "y" ]]; then
     ##copy default plugins
@@ -306,8 +306,7 @@ neo4j () {
 redash() {
   COMPOSE_FILE="docker_compose/redash.yml"
 
-  # First, prompt for input
-  prompt_for_input REDASH_DATADIR "Enter the base data directory for Redash" true
+  _prompt_for_input_ REDASH_DATADIR "Enter the base data directory for Redash" true
 
   # Set environment variables
   export POSTGRES_DATADIR="${REDASH_DATADIR}/postgres"
@@ -317,7 +316,7 @@ redash() {
   mkdir -p $POSTGRES_DATADIR
   mkdir -p $REDIS_DATADIR
 
-  prompt_for_input CREATE_DB "Create DBs (Y|y|N|n) (default: N)"
+  _prompt_for_input_ CREATE_DB "Create DBs (Y|y|N|n) (default: N)"
   if [[ $CREATE_DB == "Y" || $CREATE_DB == "y" ]]; then
      docker-compose -f $COMPOSE_FILE run --rm redash create_db
      sleep 5
@@ -333,7 +332,7 @@ metabase () {
 
   DOCKER_CONTAINER_NAME="metabase"
 
-  prompt_for_input DATADIR "Enter metabase data directory full path" true
+  _prompt_for_input_ DATADIR "Enter metabase data directory full path" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/metabase-data \

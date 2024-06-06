@@ -11,14 +11,14 @@ LIB_SCRIPT="_lib.sh"
 
 mount_disk() {
 
-  prompt_for_input MOUNT_DIR "Please enter mount directory full path" true
+  _prompt_for_input_ MOUNT_DIR "Please enter mount directory full path" true
 
-  prompt_for_input DEVICE_NAME "Please enter device name (run lsblk)" true
+  _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
 
   device_path="/dev/$DEVICE_NAME"
 
   #Disk Format
-  prompt_for_input FORMAT_RESPONSE "Do you want format the disk (it will wipe out the disk), (Y|y|N|n)" true
+  _prompt_for_input_ FORMAT_RESPONSE "Do you want format the disk (it will wipe out the disk), (Y|y|N|n)" true
 
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
     sudo mkfs.ext4 -I 128 $device_path 
@@ -58,7 +58,7 @@ mount_disk() {
 }
 
 resize_disk() {
-  prompt_for_input DEVICE_NAME "Please enter device name (run lsblk)" true
+  _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
   device_path="/dev/$DEVICE_NAME"
   
   echo "Resizing filesystem on $device_path..."
@@ -67,7 +67,7 @@ resize_disk() {
 }
 
 add_ssh_key() {
-  prompt_for_input SSH_KEY_PATH "Please enter the full path of your SSH private key" true
+  _prompt_for_input_ SSH_KEY_PATH "Please enter the full path of your SSH private key" true
   
   if [ ! -f "$SSH_KEY_PATH" ]; then
     echo "The file $SSH_KEY_PATH does not exist."
@@ -80,6 +80,72 @@ add_ssh_key() {
   echo "SSH key added and permissions set."
 }
 
+distribute_files() {
+  _prompt_for_input_ PARENT_DIR "Enter base directory full path"
+  if [ ! -d "$PARENT_DIR" ]; then
+    echo "Directory does not exist. Exiting."
+    exit 1
+  fi
+
+  _prompt_for_input_ NUM_SUB_DIRS "Enter number of sub directories to create"
+  if ! [[ "$NUM_SUB_DIRS" =~ ^[0-9]+$ ]]; then
+    echo "Invalid number of sub directories. Exiting."
+    exit 1
+  fi
+
+  _prompt_for_input_ SUB_DIRECTORY_PREFIX_ "Enter sub directory prefix"
+
+  local temp_dir="$PARENT_DIR/temp"
+  
+  # Create specified number of sub directories in parent directory if they do not exist
+  for i in $(seq 1 $NUM_SUB_DIRS); do
+    if [ ! -d "$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i" ]; then
+      mkdir "$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i"
+    fi
+  done
+
+  # Create temporary directory
+  mkdir "$temp_dir" || true
+
+  # Move all files from parent directory and its sub directories to temporary directory
+  find "$PARENT_DIR/" -type f -exec bash -c '
+  src_file="$0"
+  dest_file="'$temp_dir'/$(basename "$0")"
+  if [ "$src_file" != "$dest_file" ]; then
+    mv "$src_file" "$dest_file"
+  fi' {} \;
+
+  # Function to get the smallest directory
+  get_smallest_directory() {
+    local smallest_size=0
+    local smallest_dir=""
+    for i in $(seq 1 $NUM_SUB_DIRS); do
+      local curr_dir="$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i"
+      local curr_size=$(du -s "$curr_dir" | awk '{print $1}')
+      if [ $i -eq 1 ] || [ $curr_size -lt $smallest_size ]; then
+        smallest_size=$curr_size
+        smallest_dir=$curr_dir
+      fi
+    done
+    echo "$smallest_dir"
+  }
+
+  # Move all files from temporary directory to sub directories
+  while [ $(ls -A "$temp_dir" | wc -l) -gt 0 ]; do
+    smallest_dir=$(get_smallest_directory)
+    file=$(ls -A "$temp_dir" | head -n 1)
+
+    echo "moving $file ---> $smallest_dir"
+    mv "$temp_dir/$file" "$smallest_dir"
+  done
+
+  # Remove temp directory
+  rm -rf "$temp_dir"
+
+  # Remove empty sub directories
+  find "$PARENT_DIR" -type d -empty -delete
+}
+
 main () {
   local option_selected=$1
   source $LIB_SCRIPT
@@ -88,6 +154,7 @@ main () {
     mount_disk
     resize_disk
     add_ssh_key
+    distribute_files
   )
   
   local ts_start=$(date +%F_%T)
