@@ -12,6 +12,8 @@
 
  ## Performance tuning
  - script: perf_tuning.sh
+ - Run script as sudo: 
+        sudo ./perf_tuning.sh
  - Description: Parameter tuning for linux system for scaling
  - Keywords: "performance", "scale", "tuning" 
 
