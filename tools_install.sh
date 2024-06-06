@@ -62,6 +62,14 @@ prompt_for_input() {
   done
 }
 
+_print_array_() {
+  local counter=1
+  for item in "$@"; do
+    echo "${counter}. ${item}"
+    ((counter++))
+  done
+}
+
 docker_install() {
   echo "Installing Docker..."
 
