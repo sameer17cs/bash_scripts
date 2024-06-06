@@ -245,7 +245,8 @@ mysql() {
     -p 3306:3306 \
     mysql:latest
 
-  MYSQL_VERSION=$(docker exec $MYSQL_CONTAINER_NAME mysql --version | awk '{print $5}' | awk -F, '{print $1}')
+  MYSQL_VERSION=$(docker exec $MYSQL_CONTAINER_NAME mysql --version 2>&1 | awk '{print $5}' | awk -F, '{print $1}')
+
   echo "MySQL version $MYSQL_VERSION"
 }
 
