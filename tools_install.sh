@@ -220,7 +220,7 @@ nginx_certbot() {
 
 mongodb () {
 
-  MONGO_CONTAINER_NAME="my_mongo_server"
+  MONGO_CONTAINER_NAME="mongo_server"
 
   prompt_for_input DATADIR "Enter MongoDB data directory full path" true
 
@@ -234,7 +234,7 @@ mongodb () {
 }
 
 mysql() {
-  MYSQL_CONTAINER_NAME="my_mysql_server"
+  MYSQL_CONTAINER_NAME="mysql_server"
 
   prompt_for_input DATADIR "Enter MySQL data directory full path" true
   prompt_for_input ROOT_PASSWORD "Enter MySQL root password" true
@@ -251,7 +251,7 @@ mysql() {
 
 redis () {
 
-  REDIS_CONTAINER_NAME="my_redis_server"
+  REDIS_CONTAINER_NAME="redis_server"
   
   prompt_for_input DATADIR "Enter Redis data directory full path" true
 
@@ -269,7 +269,7 @@ redis () {
 
 elasticsearch () {
 
-  ES_CONTAINER_NAME="my_elasticsearch_server"
+  ES_CONTAINER_NAME="elasticsearch_server"
 
   prompt_for_input DATADIR "Enter Elasticsearch data directory full path" true
 
@@ -310,7 +310,7 @@ neo4j () {
 
   AUTH_USERNAME="neo4j"
   AUTH_PASSWORD="password"
-  DOCKER_CONTAINER_NAME="my_neo4j_server"
+  DOCKER_CONTAINER_NAME="neo4j_server"
   PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
   MAX_MEMORY_TRASACTION="8g"
 
@@ -351,7 +351,7 @@ neo4j () {
 }
 
 redash() {
-  DOCKER_CONTAINER_NAME="my_redash_server"
+  DOCKER_CONTAINER_NAME="redash_server"
   COMPOSE_FILE="docker_compose/redash.yml"
 
   # First, prompt for input
@@ -380,7 +380,7 @@ redash() {
 
 metabase () {
 
-  DOCKER_CONTAINER_NAME="my_metabase_server"
+  DOCKER_CONTAINER_NAME="metabase_server"
 
   prompt_for_input DATADIR "Enter metabase data directory full path" true
 
