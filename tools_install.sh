@@ -13,7 +13,7 @@
 
 set -e
 
-LIB_SCRIPT="_lib.sh"
+LIB_SCRIPT="./_lib.sh"
 
 docker_install() {
   echo "Installing Docker..."
