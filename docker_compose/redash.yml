@@ -1,23 +1,25 @@
-version: '3.7'
+version: '3.9'
 
 services:
   postgres:
     image: postgres:latest
+    container_name: postgres
     environment:
       - POSTGRES_USER=redash
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=redash
     volumes:
-      - <replace_with_path_to_postgres_data>:/var/lib/postgresql/data
+      - ${POSTGRES_DATADIR}:/var/lib/postgresql/data
 
   redis:
     image: redis:latest
+    container_name: redis
     volumes:
-      - <replace_with_path_to_redis_data>:/data
+      - ${REDIS_DATADIR}:/data
 
   redash:
     image: redash/redash:latest
-    container_name: <replace_with_redash_container_name>
+    container_name: redash
     depends_on:
       - postgres
       - redis

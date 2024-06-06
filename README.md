@@ -1,24 +1,22 @@
 # Collection of useful bash scripts for nix systems.
 
-## Mount Disk
- - script: mount_disk.sh
- - Description: Automate external disk mounting in a linux
- - Keywords: "disk mount", "fstab", "automount", "disk format", "ext4"
+## Installer
+ - script: installer.sh `you_chosen_option`
+ - Description: Script to install some useful tools via Docker or apt-get
+ - Keywords: "mongodb", "elasticsearch", "redis", "neo4j", "nginx", "nginx_certbot", "docker", "docker-compose"
 
- ## Nix Tuning
- - script: nix_tuning.sh
+## Toolkit
+ - script: toolkit.sh
+ - Description: Automate linux operations
+ - Keywords: "disk mount", "fstab", "automount", "disk format", "ext4", "resize", "ssh-add"
+
+ ## Performance tuning
+ - script: perf_tuning.sh
+ - Run script as sudo: 
+        sudo ./perf_tuning.sh
  - Description: Parameter tuning for linux system for scaling
  - Keywords: "performance", "scale", "tuning" 
 
- ## Install Docker and related packages
- - script: docker.sh `you_chosen_option`
- - Description: Properly install/uninstall docker
- - Keywords: "docker", "docker-compose"
-
-## Install Tools
- - script: tools_install.sh `you_chosen_option`
- - Description: Script to install some useful tools via Docker or apt-get
- - Keywords: "mongodb", "elasticsearch", "redis", "neo4j", "nginx", "nginx_certbot"
 ## GCP Firewall: 
  - script: gcloud_firewall.sh `your firewall rule name`
  - Description: Add your dynamic ip to firewall rules in gcp
