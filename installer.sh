@@ -249,7 +249,7 @@ elasticsearch() {
   done
 }
 
-setup_kibana() {
+kibana() {
   KIBANA_CONTAINER_NAME="kibana"
   
   local default_elastic_host="http://127.0.0.1:9200"
