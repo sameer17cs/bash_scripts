@@ -262,7 +262,7 @@ kibana() {
 
   local kibana_system_user="kibana_system"
   local kibana_system_password_var_name="kibana_system_password"
-  add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "$ELASTIC_HOST"
+  add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "kibana_admin" "$ELASTIC_HOST"
   local kibana_system_password="${!kibana_system_password_var_name}"
 
   #kibana login user
@@ -392,9 +392,10 @@ add_elasticsearch_user() {
   local username_to_add="$1"
   local password_var_name="$2"
   local ELASTIC_HOST="$3"
+  local role_to_assign="$4"
   local temp_file="/tmp/response.json"
 
-  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch${C_DEFAULT}"
+  echo -e "${C_GREEN}Creating Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
 
   # Get Elasticsearch root user password
   while true; do
@@ -405,25 +406,28 @@ add_elasticsearch_user() {
       break
     else
       echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
+      echo
     fi
   done
 
   # Get and set password for the new user
   while true; do
     _prompt_for_input_ "$password_var_name" "Enter password for the Elasticsearch user '$username_to_add'" true
+    local user_password="${!password_var_name}"
 
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "{\"password\":\"${!password_var_name}\"}")
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"],\"full_name\":\"Kibana User\",\"email\":\"$username_to_add@example.com\"}")
     if [[ "$response" == "200" ]]; then
-      echo -e "${C_BLUE}Password set successfully for $username_to_add user.${C_DEFAULT}"
+      echo -e "${C_BLUE}User '$username_to_add' created successfully with role '$role_to_assign'.${C_DEFAULT}"
       break
     else
-      echo -e "${C_RED}Failed to set password for $username_to_add user ${C_DEFAULT}"
+      echo -e "${C_RED}Failed to create user '$username_to_add'. Response:${C_DEFAULT}"
       cat $temp_file
+      echo
     fi
   done
+
   rm $temp_file
 }
-
 
 ensure_directory_exists() {
   local dir_path="$1"
