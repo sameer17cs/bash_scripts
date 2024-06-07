@@ -394,8 +394,9 @@ add_elasticsearch_user() {
   local password_var_name="$3"
   local role_to_assign="${4:-}"
   local temp_file="/tmp/response.json"
+  local user_exists=false
 
-  echo -e "${C_GREEN}Creating Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
+  echo -e "${C_GREEN}Processing Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
 
   # Get Elasticsearch root user password
   while true; do
@@ -410,30 +411,47 @@ add_elasticsearch_user() {
     fi
   done
 
+  # Check if the user already exists
+  response=$(curl -s -o $temp_file -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST/_security/user/$username_to_add")
+  if [[ "$(cat $temp_file)" != "404" ]]; then
+    user_exists=true
+  fi
+
   # Prompt for the new user's password
   _prompt_for_input_ "$password_var_name" "Enter password for the Elasticsearch user '$username_to_add'" true
   local user_password="${!password_var_name}"
 
-  # Prepare the user creation JSON payload
-  if [[ -n "$role_to_assign" ]]; then
-    payload="{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"],\"full_name\":\"Kibana User\"}"
-  else
+  if [[ "$user_exists" == true ]]; then
+    # Update password for existing user
     payload="{\"password\":\"$user_password\"}"
-  fi
-
-  # Create or update the user
-  response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
-  if [[ "$response" == "200" ]]; then
-    echo -e "${C_BLUE}User '$username_to_add' created successfully.${C_DEFAULT}"
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
+    if [[ "$response" == "200" ]]; then
+      echo -e "${C_BLUE}Password for user '$username_to_add' updated successfully.${C_DEFAULT}"
+    else
+      echo -e "${C_RED}Failed to update password for user '$username_to_add'. Response:${C_DEFAULT}"
+      cat $temp_file
+      echo
+    fi
   else
-    echo -e "${C_RED}Failed to create user '$username_to_add'. Response:${C_DEFAULT}"
-    cat $temp_file
-    echo
+    # Create new user
+    if [[ -n "$role_to_assign" ]]; then
+      payload="{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"],\"full_name\":\"Kibana User\"}"
+    else
+      payload="{\"password\":\"$user_password\"}"
+    fi
+
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
+    if [[ "$response" == "200" ]]; then
+      echo -e "${C_BLUE}User '$username_to_add' created successfully.${C_DEFAULT}"
+    else
+      echo -e "${C_RED}Failed to create user '$username_to_add'. Response:${C_DEFAULT}"
+      cat $temp_file
+      echo
+    fi
   fi
 
   rm $temp_file
 }
-
 
 ensure_directory_exists() {
   local dir_path="$1"
