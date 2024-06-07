@@ -219,12 +219,15 @@ elasticsearch() {
   local default_version="8.14.0"
 
   _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
+  VERSION="${VERSION:-$default_version}"
+  
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
+  ensure_directory_exists $DATADIR
+  
   _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
+  
   _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
-
-  VERSION="${VERSION:-$default_version}"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 9200:9200 -p 9300:9300 \
@@ -237,52 +240,12 @@ elasticsearch() {
   --ulimit memlock=-1:-1 \
   --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:$VERSION
 
-
   # Wait for Elasticsearch to be ready
   echo "Waiting for Elasticsearch to be available..."
   until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD http://127.0.0.1:9200 | grep -q "200"; do
     echo "Elasticsearch is not ready yet. Retrying in 30 seconds..."
     sleep 30
   done
-}
-
-add_elasticsearch_user() {
-  local username_to_add="$1"
-  local ELASTIC_HOST="$2"
-  local password_var="${username_to_add}_password"
-  local temp_file="/tmp/response.json"
-
-  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch...${C_DEFAULT}"
-
-  # get Elasticsearch root user password
-  while true; do
-    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
-
-    # Test the root user password
-    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
-      break
-    else
-      echo "Invalid Elasticsearch root user password. Please try again."
-    fi
-  done
-
-  while true; do
-    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
-
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
-    if [[ "$response" == "200" ]]; then
-      echo "Password set successfully for $username_to_add user."
-      break
-    else
-      echo "Failed to set password for $username_to_add user. Response:"
-      cat $temp_file
-      echo "\n"
-    fi
-  done
-
-  local user_password="${!password_var}"
-  rm $temp_file
-  echo "$user_password"
 }
 
 kibana() {
@@ -306,13 +269,14 @@ kibana() {
   local kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST")
 
   #data directory for kibana
-  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
+  _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
+  ensure_directory_exists $DATADIR
 
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --network host \
   -p 5601:5601 \
-  --volume $KIBANA_DATADIR:/usr/share/kibana/data \
+  --volume $DATADIR:/usr/share/kibana/data \
   --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
   --env "ELASTICSEARCH_USERNAME=kibana_system" \
   --env "ELASTICSEARCH_PASSWORD=$kibana_system_password" \
@@ -453,6 +417,58 @@ metabase () {
 
   METABASE_VERSION=$(docker exec $DOCKER_CONTAINER_NAME /app/bin/run_metabase.sh version)
   echo "Metabase version $METABASE_VERSION"
+}
+
+add_elasticsearch_user() {
+  local username_to_add="$1"
+  local ELASTIC_HOST="$2"
+  local password_var="${username_to_add}_password"
+  local temp_file="/tmp/response.json"
+
+  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch...${C_DEFAULT}"
+
+  # get Elasticsearch root user password
+  while true; do
+    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
+
+    # Test the root user password
+    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
+      break
+    else
+      echo "Invalid Elasticsearch root user password. Please try again."
+    fi
+  done
+
+  while true; do
+    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
+
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
+    if [[ "$response" == "200" ]]; then
+      echo "Password set successfully for $username_to_add user."
+      break
+    else
+      echo "Failed to set password for $username_to_add user. Response:"
+      cat $temp_file
+      echo "\n"
+    fi
+  done
+
+  local user_password="${!password_var}"
+  rm $temp_file
+  echo "$user_password"
+}
+
+ensure_directory_exists() {
+  local dir_path="$1"
+  if [ ! -d "$dir_path" ]; then
+    mkdir -p "$dir_path"
+    if [ $? -eq 0 ]; then
+      echo -e "${C_GREEN}Directory $dir_path created successfully.${C_DEFAULT}"
+    else
+      echo -e "${C_RED}Failed to create directory $dir_path. Exiting...${C_DEFAULT}"
+      exit 1
+    fi
+  fi
 }
 
 main() {
