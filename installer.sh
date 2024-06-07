@@ -385,8 +385,8 @@ metabase () {
 add_elasticsearch_user() {
   local username_to_add="$1"
   local password_var_name="$2"
-  local ELASTIC_HOST="$3"
-  local role_to_assign="$4"
+  local role_to_assign="$3"
+  local ELASTIC_HOST="$4"
   local temp_file="/tmp/response.json"
 
   echo -e "${C_GREEN}Creating Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
