@@ -223,7 +223,7 @@ elasticsearch() {
 
   # Use the default version if no version is provided
   if [[ -z "$VERSION" ]]; then
-    VERSION="8.14"
+    VERSION="8.14.0"
   fi
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
@@ -248,7 +248,7 @@ kibana() {
 
   # Use the default version if no version is provided
   if [[ -z "$KIBANA_VERSION" ]]; then
-    KIBANA_VERSION="8.14"
+    KIBANA_VERSION="8.14.0"
   fi
 
   # Use the default Elasticsearch host if not provided
