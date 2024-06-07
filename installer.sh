@@ -274,6 +274,7 @@ kibana() {
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 5601:5601 \
+  --network host \
   --volume $KIBANA_DATADIR:/usr/share/kibana/data \
   --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
   --env "ELASTICSEARCH_USERNAME=kibana_system" \
@@ -293,6 +294,7 @@ kibana() {
     else
       echo "Failed to set password for kibana_system user. Response:"
       cat /tmp/response.json
+      echo "\n"
       _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
     fi
   done
