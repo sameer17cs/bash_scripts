@@ -260,6 +260,9 @@ kibana() {
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
   KIBANA_VERSION="${KIBANA_VERSION:-$default_kibana_version}"
 
+  add_elasticsearch_user_output=$(add_elasticsearch_user "kibana_system" "$ELASTIC_HOST")
+  kibana_system_password=$(echo "$add_elasticsearch_user_output" | tail -n 1)
+
   #kibana_system user
   local kibana_system_user="kibana_system"
   kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST" | tee /dev/tty)
