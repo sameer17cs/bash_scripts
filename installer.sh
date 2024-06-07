@@ -29,14 +29,14 @@ docker_install() {
     echo "No version specified, installing the latest Docker version..."
     sudo apt-get -y install docker-ce docker-ce-cli containerd.io
   else
-    echo "Installing Docker version $DOCKER_VERSION..."
-    available_versions=$(apt-cache madison docker-ce | awk '{print $3}')
+    echo -e "${C_BLUE}Installing Docker version $DOCKER_VERSION...${C_DEFAULT}"
+    local available_versions=$(apt-cache madison docker-ce | awk '{print $3}')
+
     if echo "$available_versions" | grep -q "^$DOCKER_VERSION\$"; then
       sudo apt-get -y install docker-ce=$DOCKER_VERSION docker-ce-cli=$DOCKER_VERSION containerd.io
     else
-      echo "Specified Docker version $DOCKER_VERSION is not available."
-      echo "Available versions are:"
-      echo "$available_versions"
+      echo -e "${C_RED}Specified Docker version $DOCKER_VERSION is not available.${C_DEFAULT}"
+      echo -e "${C_PURPLE}Available versions are:\n$available_versions${C_DEFAULT}"
       exit 1
     fi
   fi
@@ -58,7 +58,7 @@ docker_compose_install() {
     if curl --output /dev/null --silent --head --fail "https://github.com/docker/compose/releases/download/$COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)"; then
       COMPOSE_VERSION=$COMPOSE_VERSION
     else
-      echo "Specified Docker Compose version $COMPOSE_VERSION is not available."
+      echo -e "${C_RED}Specified Docker Compose version $COMPOSE_VERSION is not available${C_DEFAULT}"
       exit 1
     fi
   fi
@@ -110,7 +110,7 @@ nginx() {
   _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
-    echo "copying configuration file from $NGINX_CONFIG_PATH"
+    echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
     sudo cp $NGINX_CONFIG_PATH /etc/nginx/sites-available/default
   else 
@@ -126,7 +126,7 @@ nginx_certbot() {
   _prompt_for_input_ NGINX_CONFIG_PATH "Nginx configuration filepath (leave empty for default)"
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
-    echo "Copying configuration file from $NGINX_CONFIG_PATH"
+    echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
     sudo cp $NGINX_CONFIG_PATH /etc/nginx/sites-available/default
   else
@@ -148,7 +148,7 @@ nginx_certbot() {
   done
 
   if [ ${#DOMAIN_NAMES[@]} -eq 0 ]; then
-    echo "No domain names provided"
+    echo -e "${C_RED}No domain names provided${C_DEFAULT}"
     exit 1
   fi
 
@@ -167,60 +167,71 @@ nginx_certbot() {
 
 mongodb () {
 
-  MONGO_CONTAINER_NAME="mongodb"
+  local container_name="mongodb"
 
   _prompt_for_input_ DATADIR "Enter MongoDB data directory full path" true
+  ensure_directory_exists "$DATADIR"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/data/db \
   -p 27017:27017 \
-  --name $MONGO_CONTAINER_NAME mongo --quiet
+  --name $container_name mongo --quiet
 
-  MONGODB_VERSION=$(docker exec $MONGO_CONTAINER_NAME mongod --version | awk '/version/ {print $3}')
-  echo "Mongodb version $MONGODB_VERSION"
+  MONGODB_VERSION=$(docker exec $container_name mongod --version | awk '/version/ {print $3}')
+  echo -e "${C_BLUE}Mongodb version $MONGODB_VERSION${C_DEFAULT}"
 }
 
 mysql() {
-  MYSQL_CONTAINER_NAME="mysql"
+  local container_name="mysql"
 
   _prompt_for_input_ MYSQL_DATADIR "Enter MySQL data directory full path" true
+  ensure_directory_exists "$DATADIR"
 
   docker run -d \
-    --name $MYSQL_CONTAINER_NAME \
+    --name $container_name \
     -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
     -v $MYSQL_DATADIR:/var/lib/mysql \
     -p 3306:3306 \
     mysql:latest
 
-  MYSQL_VERSION=$(docker exec $MYSQL_CONTAINER_NAME mysql --version | grep -oP '(?<=Ver\s)[^ ]+')
-  echo "MySQL version $MYSQL_VERSION"
+  MYSQL_VERSION=$(docker exec $container_name mysql --version | grep -oP '(?<=Ver\s)[^ ]+')
+  echo -e "${C_BLUE}MySQL version $MYSQL_VERSION${C_DEFAULT}"
 }
 
 redis () {
 
-  REDIS_CONTAINER_NAME="redis"
+  local container_name="redis"
   
   _prompt_for_input_ DATADIR "Enter Redis data directory full path" true
+  ensure_directory_exists "$DATADIR"
 
   docker run  --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/data \
   -p 6379:6379 \
-  --name $REDIS_CONTAINER_NAME redis --appendonly yes
+  --name $container_name redis --appendonly yes
 
   #set defaults
-  #docker exec $REDIS_CONTAINER_NAME bash -c 'apt update && apt install -y procps && echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && sysctl -p'
+  #docker exec $container_name bash -c 'apt update && apt install -y procps && echo "vm.overcommit_memory=1" >> /etc/sysctl.conf && sysctl -p'
 
-  REDIS_VERSION=$(docker exec $REDIS_CONTAINER_NAME redis-server --version | awk '{print $3}' | cut -d= -f2)
-  echo "Redis version: $REDIS_VERSION"
+  REDIS_VERSION=$(docker exec $container_name redis-server --version | awk '{print $3}' | cut -d= -f2)
+  echo -e "${C_BLUE}Redis version: $REDIS_VERSION${C_DEFAULT}"
 }
 
-elasticsearch () {
+elasticsearch() {
 
-  ES_CONTAINER_NAME="elasticsearch"
+  local container_name="elasticsearch"
+  local default_version="8.14.0"
+  local username="elastic"
 
+  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
+  
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
-
-  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
+  ensure_directory_exists $DATADIR
+  
+  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user (username: $username)" true
+  
+  _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
+  _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 9200:9200 -p 9300:9300 \
@@ -229,55 +240,97 @@ elasticsearch () {
   --env "discovery.type=single-node" \
   --env "ELASTIC_PASSWORD=$PWD" \
   --env "xpack.security.enabled=true" \
+  --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
   --ulimit memlock=-1:-1 \
-  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:latest
+  --name $container_name docker.elastic.co/elasticsearch/elasticsearch:${VERSION:-$default_version}
+
+  # Wait for Elasticsearch to be ready
+  echo "Waiting for Elasticsearch to be available..."
+  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD http://127.0.0.1:9200 | grep -q "200"; do
+    echo "Elasticsearch is not ready yet. Retrying in 30 seconds..."
+    sleep 30
+  done
+
+  echo -e "${C_GREEN}Elasticsearch setup complete.${C_DEFAULT}"
+  echo -e "${C_BLUE}Elasticsearch username: $username${C_DEFAULT}"
+  echo -e "${C_BLUE}Elasticsearch password: $PWD${C_DEFAULT}"
 }
 
-elk_stack() {
-  echo "Setting up environment for Elasticsearch, Kibana, and Logstash"
+kibana() {
+  local container_name="kibana"
+  local default_elastic_host="http://127.0.0.1:9200"
+  local default_kibana_version="8.14.0"
 
-  _prompt_for_input_ ELK_VERSION "Enter version for Elasticsearch, Kibana, and Logstash (default: 8.14.0)"
+  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
+  ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
 
-  # Use the default version if ELK_VERSION is empty
-  if [[ -z "$ELK_VERSION" ]]; then
-    ELK_VERSION="8.14.0"
+  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
+
+  local kibana_system_user="kibana_system"
+  local kibana_system_password=$(openssl rand -base64 12)
+  local temp_file="/tmp/response.json"
+
+  echo -e "${C_GREEN}Setting up password for Elasticsearch user '${kibana_system_user}'...${C_DEFAULT}"
+
+  # Get Elasticsearch root user password
+  while true; do
+    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
+
+    # Test the root user password
+    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
+      break
+    else
+      echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
+      echo
+    fi
+  done
+
+  # Update password for kibana_system user
+  payload="{\"password\":\"$kibana_system_password\"}"
+  response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$kibana_system_user/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
+  if [[ "$response" == "200" ]]; then
+    echo -e "${C_BLUE}Password for user '$kibana_system_user' updated successfully.${C_DEFAULT}"
+  else
+    echo -e "${C_RED}Failed to update password for user '$kibana_system_user'. Response:${C_DEFAULT}"
+    cat $temp_file
+    echo
+    rm $temp_file
+    return 1
   fi
 
-  _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
-  _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
-  _prompt_for_input_ ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
-  _prompt_for_input_ KIBANA_DATA_PATH "Enter path for Kibana data" true
-  _prompt_for_input_ LOGSTASH_PATH "Enter path for Logstash directory" true
+  rm $temp_file
 
-  # Define the Docker Compose file location
-  COMPOSE_FILE="docker_compose/elk.yml"
+  # Data directory for Kibana
+  _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
+  ensure_directory_exists "$DATADIR"
 
-  # Run Docker Compose
-  echo "Running Docker Compose for the ELK stack..."
-  ELK_VERSION=$ELK_VERSION docker-compose -f $COMPOSE_FILE up -d
+  # Create Kibana container
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  --network host \
+  -p 5601:5601 \
+  --volume $DATADIR:/usr/share/kibana/data \
+  --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
+  --env "ELASTICSEARCH_USERNAME=$kibana_system_user" \
+  --env "ELASTICSEARCH_PASSWORD=$kibana_system_password" \
+  --env "XPACK_SECURITY_ENABLED=true" \
+  --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
+  --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
+  --name $container_name docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
 
-  echo "ELK stack setup and launch complete."
+  echo -e "${C_GREEN}Kibana setup complete, use elastic username and password to login ${C_DEFAULT}"
 }
 
 neo4j () {
 
-  AUTH_USERNAME="neo4j"
-  AUTH_PASSWORD="password"
-  DOCKER_CONTAINER_NAME="neo4j"
-  PLUGINS_DOWNLOAD_DIR="/tmp/neo4j_plugins"
-  MAX_MEMORY_TRASACTION="8g"
+  local username="neo4j"
+  local container_name="neo4j"
 
   _prompt_for_input_ DATADIR "Enter neo4j data directory full path" true
-  if [ -z "$DATADIR" ]; then
-    echo "Invalid directory"
-    exit 1
-  fi
+  ensure_directory_exists "$DATADIR"
 
-  _prompt_for_input_ PWD "Enter neo4j auth password (default: $AUTH_PASSWORD )"
-  if [ ! -z "$PWD" ]; then
-    AUTH_PASSWORD=$PWD
-  fi
-  echo "Auth username: $AUTH_USERNAME, Auth password: $AUTH_PASSWORD"
+  _prompt_for_input_ PWD "Enter password for user $username" true
+
+  _prompt_for_input_ MAX_MEMORY "Enter max memory in gb" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR/data:/data \
@@ -285,64 +338,79 @@ neo4j () {
   --volume $DATADIR/import:/var/lib/neo4j/import \
   --volume $DATADIR/plugins:/var/lib/neo4j/plugins \
   -p 7474:7474 -p 7687:7687 \
-  --env NEO4J_AUTH=$AUTH_USERNAME/$AUTH_PASSWORD \
+  --env NEO4J_AUTH=$username/$PWD \
   --env NEO4J_apoc_import_file_enabled=true \
-  --env NEO4J_dbms_memory_transaction_total_max=$MAX_MEMORY_TRASACTION \
-  --name $DOCKER_CONTAINER_NAME neo4j:latest
-
-  NEO4J_VERSION=$(docker exec $DOCKER_CONTAINER_NAME neo4j-admin version | grep -oP '\d+\.\d+(\.\d+)*')
+  --env NEO4J_dbms_memory_transaction_total_max=$MAX_MEMORY \
+  --name $container_name neo4j:latest
 
   _prompt_for_input_ LOAD_PLUGIN "Load default plugins (Y|y|N|n) (default: N)"
 
   if [[ $LOAD_PLUGIN == "Y" || $LOAD_PLUGIN == "y" ]]; then
     ##copy default plugins
-    docker exec $DOCKER_CONTAINER_NAME sh -c "cp /var/lib/neo4j/labs/*.jar /var/lib/neo4j/plugins/"
+    docker exec $container_name sh -c "cp /var/lib/neo4j/labs/*.jar /var/lib/neo4j/plugins/"
     sleep 5
-    docker restart $DOCKER_CONTAINER_NAME
+    docker restart $container_name
   fi
-  echo "Neo4j version $NEO4J_VERSION"
+  local version=$(docker exec $container_name neo4j-admin version | grep -oP '\d+\.\d+(\.\d+)*')
+  echo -e "${C_GREEN}Neo4j version $NEO4J_VERSION${C_DEFAULT}"
+  echo -e "${C_BLUE} Username: $username, Password: $PWD${C_DEFAULT}"
 }
 
 redash() {
-  COMPOSE_FILE="docker_compose/redash.yml"
+  local compose_file="docker_compose/redash.yml"
 
-  _prompt_for_input_ REDASH_DATADIR "Enter the base data directory for Redash" true
+  _prompt_for_input_ DATADIR "Enter the base data directory for Redash" true
+  ensure_directory_exists "$DATADIR"
 
   # Set environment variables
-  export POSTGRES_DATADIR="${REDASH_DATADIR}/postgres"
-  export REDIS_DATADIR="${REDASH_DATADIR}/redis"
+  export POSTGRES_DATADIR="${DATADIR}/postgres"
+  export REDIS_DATADIR="${DATADIR}/redis"
 
-  # Create directories if they don't exist
-  mkdir -p $POSTGRES_DATADIR
-  mkdir -p $REDIS_DATADIR
+  ensure_directory_exists "$POSTGRES_DATADIR"
+  ensure_directory_exists "$REDIS_DATADIR"
 
   _prompt_for_input_ CREATE_DB "Create DBs (Y|y|N|n) (default: N)"
   if [[ $CREATE_DB == "Y" || $CREATE_DB == "y" ]]; then
-     docker-compose -f $COMPOSE_FILE run --rm redash create_db
+     docker-compose -f $compose_file run --rm redash create_db
      sleep 5
   fi
   
   docker-compose -f $COMPOSE_FILE up -d
 
   REDASH_VERSION=$(docker exec -it $DOCKER_CONTAINER_NAME redash version)
-  echo "Redash version $REDASH_VERSION"
+  echo -e "${C_GREEN}Redash version $REDASH_VERSION${C_DEFAULT}"
+
 }
 
 metabase () {
 
-  DOCKER_CONTAINER_NAME="metabase"
+  local container_name="metabase"
 
   _prompt_for_input_ DATADIR "Enter metabase data directory full path" true
+  ensure_directory_exists "$DATADIR"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/metabase-data \
   --env MB_DB_FILE=/metabase-data/metabase.db \
   --env MB_DB_TYPE=h2 \
   -p 5000:3000 \
-  --name $DOCKER_CONTAINER_NAME metabase/metabase
+  --name $container_name metabase/metabase
 
-  METABASE_VERSION=$(docker exec $DOCKER_CONTAINER_NAME /app/bin/run_metabase.sh version)
-  echo "Metabase version $METABASE_VERSION"
+  METABASE_VERSION=$(docker exec $container_name /app/bin/run_metabase.sh version)
+  echo -e "${C_GREEN}Metabase version $METABASE_VERSION${C_DEFAULT}"
+}
+
+ensure_directory_exists() {
+  local dir_path="$1"
+  if [ ! -d "$dir_path" ]; then
+    mkdir -p "$dir_path"
+    if [ $? -eq 0 ]; then
+      echo -e "${C_GREEN}Directory $dir_path created successfully.${C_DEFAULT}"
+    else
+      echo -e "${C_RED}Failed to create directory $dir_path. Exiting...${C_DEFAULT}"
+      exit 1
+    fi
+  fi
 }
 
 main() {
@@ -362,13 +430,11 @@ main() {
     mysql
     redis
     elasticsearch
-    elk_stack
+    kibana
     neo4j
     redash
     metabase
   )
-
-  local ts_start=$(date +%F_%T)
 
   # Check if function exists & run it, otherwise list options
   if [[ " ${FUNCTIONS[@]} " =~ " $option_selected " ]]; then
@@ -378,10 +444,6 @@ main() {
     
     #call the function
     "$option_selected"
-
-    local ts_end=$(date +%F_%T)
-    echo -e "${C_GREEN} Script for $option_selected finished successfully. \n Begin at: $ts_start \n End at: $ts_end${C_DEFAULT}"
-
   else
     echo -e "${C_RED}Unknown option $option_selected, please choose from below options${C_DEFAULT}"
     _print_array_ "${FUNCTIONS[@]}"
