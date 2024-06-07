@@ -415,6 +415,7 @@ add_elasticsearch_user() {
     response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "{\"password\":\"${!password_var_name}\"}")
     if [[ "$response" == "200" ]]; then
       echo "Password set successfully for $username_to_add user."
+      echo "\n"
       break
     else
       echo "Failed to set password for $username_to_add user. Response:"
@@ -422,7 +423,6 @@ add_elasticsearch_user() {
       echo "\n"
     fi
   done
-
   rm $temp_file
 }
 
