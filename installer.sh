@@ -248,6 +248,13 @@ elasticsearch() {
   done
 }
 
+ensure_directory_exists() {
+  local dir_path="$1"
+  if [[ ! -d "$dir_path" ]]; then
+    mkdir -p "$dir_path"
+  fi
+}
+
 kibana() {
   KIBANA_CONTAINER_NAME="kibana"
   
@@ -261,19 +268,42 @@ kibana() {
   KIBANA_VERSION="${KIBANA_VERSION:-$default_kibana_version}"
 
   local kibana_system_user="kibana_system"
-  local kibana_system_password_var_name="kibana_system_password"
-  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_system_user" "$kibana_system_password_var_name"
-  local kibana_system_password="${!kibana_system_password_var_name}"
+  local kibana_system_password=$(openssl rand -base64 12)
+  local temp_file="/tmp/response.json"
 
-  #kibana login user
-  local kibana_login_user="kibana"
-  local kibana_login_password_var_name="kibana_login_password"
-  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_login_user" "$kibana_login_password_var_name" "kibana_admin"
-  local kibana_login_password="${!kibana_login_password_var_name}"
+  echo -e "${C_GREEN}Setting up password for Elasticsearch user '${kibana_system_user}'...${C_DEFAULT}"
 
-  #data directory for kibana
+  # Get Elasticsearch root user password
+  while true; do
+    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
+
+    # Test the root user password
+    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
+      break
+    else
+      echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
+      echo
+    fi
+  done
+
+  # Update password for kibana_system user
+  payload="{\"password\":\"$kibana_system_password\"}"
+  response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$kibana_system_user/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
+  if [[ "$response" == "200" ]]; then
+    echo -e "${C_BLUE}Password for user '$kibana_system_user' updated successfully.${C_DEFAULT}"
+  else
+    echo -e "${C_RED}Failed to update password for user '$kibana_system_user'. Response:${C_DEFAULT}"
+    cat $temp_file
+    echo
+    rm $temp_file
+    return 1
+  fi
+
+  rm $temp_file
+
+  # Data directory for Kibana
   _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
-  ensure_directory_exists $DATADIR
+  ensure_directory_exists "$DATADIR"
 
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
@@ -281,7 +311,7 @@ kibana() {
   -p 5601:5601 \
   --volume $DATADIR:/usr/share/kibana/data \
   --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
-  --env "ELASTICSEARCH_USERNAME=kibana_system" \
+  --env "ELASTICSEARCH_USERNAME=$kibana_system_user" \
   --env "ELASTICSEARCH_PASSWORD=$kibana_system_password" \
   --env "XPACK_SECURITY_ENABLED=true" \
   --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
@@ -291,7 +321,7 @@ kibana() {
   # Wait for Kibana to be ready
   echo "Waiting for Kibana to be available..."
   while true; do
-    if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u $kibana_login_user:$kibana_login_password http://127.0.0.1:5601)" == "200" ]]; then
+    if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u $kibana_system_user:$kibana_system_password http://127.0.0.1:5601)" == "200" ]]; then
       echo "Kibana is available."
       break
     fi
@@ -301,6 +331,7 @@ kibana() {
 
   echo "Kibana setup and launch complete."
 }
+
 
 neo4j () {
 
@@ -386,71 +417,6 @@ metabase () {
 
   METABASE_VERSION=$(docker exec $DOCKER_CONTAINER_NAME /app/bin/run_metabase.sh version)
   echo "Metabase version $METABASE_VERSION"
-}
-
-add_elasticsearch_user() {
-  local ELASTIC_HOST="$1"
-  local username_to_add="$2"
-  local password_var_name="$3"
-  local role_to_assign="${4:-}"
-  local temp_file="/tmp/response.json"
-  local user_exists=false
-
-  echo -e "${C_GREEN}Processing Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
-
-  # Get Elasticsearch root user password
-  while true; do
-    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
-
-    # Test the root user password
-    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
-      break
-    else
-      echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
-      echo
-    fi
-  done
-
-  # Check if the user already exists
-  response=$(curl -s -o $temp_file -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST/_security/user/$username_to_add")
-  if [[ "$(cat $temp_file)" != "404" ]]; then
-    user_exists=true
-  fi
-
-  # Prompt for the new user's password
-  _prompt_for_input_ "$password_var_name" "Enter password for the Elasticsearch user '$username_to_add'" true
-  local user_password="${!password_var_name}"
-
-  if [[ "$user_exists" == true ]]; then
-    # Update password for existing user
-    payload="{\"password\":\"$user_password\"}"
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
-    if [[ "$response" == "200" ]]; then
-      echo -e "${C_BLUE}Password for user '$username_to_add' updated successfully.${C_DEFAULT}"
-    else
-      echo -e "${C_RED}Failed to update password for user '$username_to_add'. Response:${C_DEFAULT}"
-      cat $temp_file
-      echo
-    fi
-  else
-    # Create new user
-    if [[ -n "$role_to_assign" ]]; then
-      payload="{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"],\"full_name\":\"Kibana User\"}"
-    else
-      payload="{\"password\":\"$user_password\"}"
-    fi
-
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
-    if [[ "$response" == "200" ]]; then
-      echo -e "${C_BLUE}User '$username_to_add' created successfully.${C_DEFAULT}"
-    else
-      echo -e "${C_RED}Failed to create user '$username_to_add'. Response:${C_DEFAULT}"
-      cat $temp_file
-      echo
-    fi
-  fi
-
-  rm $temp_file
 }
 
 ensure_directory_exists() {
