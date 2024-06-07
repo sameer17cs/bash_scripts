@@ -224,7 +224,7 @@ elasticsearch() {
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
   ensure_directory_exists $DATADIR
   
-  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
+  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user (username: elastic)" true
   
   _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
