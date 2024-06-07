@@ -248,38 +248,11 @@ elasticsearch() {
 
 add_elasticsearch_user() {
   local username_to_add="$1"
-  local elastic_root_password="$2"
+  local ELASTIC_HOST="$2"
   local password_var="${username_to_add}_password"
   local temp_file="/tmp/response.json"
 
-  # Set the password for the user in Elasticsearch
-  while true; do
-    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
-
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
-    if [[ "$response" == "200" ]]; then
-      echo "Password set successfully for $username_to_add user."
-      break
-    else
-      echo "Failed to set password for $username_to_add user. Response:"
-      cat $temp_file
-      echo "\n"
-    fi
-  done
-  rm $temp_file
-}
-
-
-kibana() {
-  KIBANA_CONTAINER_NAME="kibana"
-  
-  local default_elastic_host="http://127.0.0.1:9200"
-  local default_kibana_version="8.14.0"
-
-  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
-
-  # Use the default host if no host is provided
-  ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
+  echo "Welcome to user setup of elasticsearch..."
 
   # get Elasticsearch root user password
   while true; do
@@ -293,19 +266,47 @@ kibana() {
     fi
   done
 
-  # Set the password for kibana_system user in Elasticsearch
-  add_elasticsearch_user "kibana_system" "$ELASTIC_ROOT_PASSWORD"
+  while true; do
+    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
 
-  # Set the password for kibana user in Elasticsearch
-  add_elasticsearch_user "kibana" "$ELASTIC_ROOT_PASSWORD"
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
+    if [[ "$response" == "200" ]]; then
+      echo "Password set successfully for $username_to_add user."
+      break
+    else
+      echo "Failed to set password for $username_to_add user. Response:"
+      cat $temp_file
+      echo "\n"
+    fi
+  done
 
-  # Get Kibana configuration inputs
+  local user_password="${!password_var}"
+  rm $temp_file
+  echo "$user_password"
+}
+
+kibana() {
+  KIBANA_CONTAINER_NAME="kibana"
+  
+  local default_elastic_host="http://127.0.0.1:9200"
+  local default_kibana_version="8.14.0"
+
+  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
+  ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
+
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
-  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
-  _prompt_for_input_ KIBANA_PWD "Enter password for the Kibana login user" true
-
-  # Use the default version if no version is provided
   KIBANA_VERSION="${KIBANA_VERSION:-$default_kibana_version}"
+
+  #kibana_system user
+  local kibana_system_user="kibana_system"
+  local kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST")
+
+  #kibana login user
+  local kibana_login_user="kibana"
+  local kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST")
+
+  #data directory for kibana
+  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
 
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
@@ -314,7 +315,7 @@ kibana() {
   --volume $KIBANA_DATADIR:/usr/share/kibana/data \
   --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
   --env "ELASTICSEARCH_USERNAME=kibana_system" \
-  --env "ELASTICSEARCH_PASSWORD=$ELASTIC_KIBANA_PASSWORD" \
+  --env "ELASTICSEARCH_PASSWORD=$kibana_system_password" \
   --env "XPACK_SECURITY_ENABLED=true" \
   --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
@@ -323,7 +324,7 @@ kibana() {
   # Wait for Kibana to be ready
   echo "Waiting for Kibana to be available..."
   while true; do
-    if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u $kibana_user:$KIBANA_PWD http://127.0.0.1:5601)" == "200" ]]; then
+    if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u $kibana_login_user:$kibana_login_password http://127.0.0.1:5601)" == "200" ]]; then
       echo "Kibana is available."
       break
     fi
