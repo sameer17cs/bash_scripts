@@ -233,31 +233,41 @@ elasticsearch () {
   --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:latest
 }
 
-elk_stack() {
-  echo "Setting up environment for Elasticsearch, Kibana, and Logstash"
+kibana() {
+  KIBANA_CONTAINER_NAME="kibana"
 
-  _prompt_for_input_ ELK_VERSION "Enter version for Elasticsearch, Kibana, and Logstash (default: 8.14.0)"
+  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
+  _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
+  _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user (can be empty)" true
+  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: http://localhost:9200)" false
 
-  # Use the default version if ELK_VERSION is empty
-  if [[ -z "$ELK_VERSION" ]]; then
-    ELK_VERSION="8.14.0"
+  # Use the default Elasticsearch host if not provided
+  if [[ -z "$ELASTIC_HOST" ]]; then
+    ELASTIC_HOST="http://localhost:9200"
   fi
 
-  _prompt_for_input_ ELASTIC_PASSWORD "Enter elasticsearch default password (user: elastic)" true
-  _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
-  _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
-  _prompt_for_input_ ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
-  _prompt_for_input_ KIBANA_DATA_PATH "Enter path for Kibana data" true
-  _prompt_for_input_ LOGSTASH_PATH "Enter path for Logstash directory" true
+  # Create Kibana container
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  -p 5601:5601 \
+  --volume $KIBANA_DATADIR:/usr/share/kibana/data \
+  --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
+  --env "ELASTICSEARCH_USERNAME=kibana_system" \
+  --env "ELASTICSEARCH_PASSWORD=$ELASTIC_KIBANA_PASSWORD" \
+  --env "XPACK_SECURITY_ENABLED=true" \
+  --env "XPACK_SECURITY_ENCRYPTIONKEY=$(openssl rand -hex 32)" \
+  --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
+  --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
+  --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:latest
 
-  # Define the Docker Compose file location
-  COMPOSE_FILE="docker_compose/elk.yml"
+  # Wait for Elasticsearch to start
+  echo "Waiting for Elasticsearch to start..."
+  sleep 30  # Adjust this sleep time as needed for your environment
 
-  # Run Docker Compose
-  echo "Running Docker Compose for the ELK stack..."
-  ELK_VERSION=$ELK_VERSION docker-compose -f $COMPOSE_FILE up -d
+  # Set the password for kibana_system user in Elasticsearch
+  echo "Setting password for kibana_system user in Elasticsearch..."
+  curl -X POST "$ELASTIC_HOST/_security/user/kibana_system/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$ELASTIC_KIBANA_PASSWORD\"}"
 
-  echo "ELK stack setup and launch complete."
+  echo "Kibana setup and launch complete."
 }
 
 neo4j () {
