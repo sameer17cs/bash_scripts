@@ -57,3 +57,11 @@ _print_array_() {
     ((counter++))
   done
 }
+
+# Define color codes for easy reference
+C_RED="\033[0;31m"
+C_GREEN="\033[0;32m"
+C_YELLOW="\033[0;33m"
+C_DEFAULT="\033[0m"
+C_BLUE="\033[0;34m"
+C_PURPLE="\033[0;35m"
