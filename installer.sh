@@ -391,8 +391,6 @@ add_elasticsearch_user() {
   local password_var="${username_to_add}_password"
   local temp_file="/tmp/response.json"
 
-  echo "Welcome to user setup of Elasticsearch..."
-
   # get Elasticsearch root user password
   while true; do
     _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
