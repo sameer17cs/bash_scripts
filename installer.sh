@@ -317,7 +317,7 @@ kibana() {
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
   --name $container_name docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
 
-  echo "Kibana setup complete, use elastic username and password to login"
+  echo -e "${C_GREEN}Kibana setup complete, use elastic username and password to login ${C_DEFAULT}"
 }
 
 neo4j () {
@@ -331,8 +331,6 @@ neo4j () {
   _prompt_for_input_ PWD "Enter password for user $username" true
 
   _prompt_for_input_ MAX_MEMORY "Enter max memory in gb" true
-
-  echo "Auth username: $username, Auth password: $PWD"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR/data:/data \
