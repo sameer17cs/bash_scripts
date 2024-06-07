@@ -249,41 +249,19 @@ elasticsearch() {
   done
 }
 
-kibana() {
+setup_kibana() {
   KIBANA_CONTAINER_NAME="kibana"
+  
+  local default_elastic_host="http://127.0.0.1:9200"
+  local default_kibana_version="8.14.0"
+  local kibana_user="kibana"
 
-  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: 8.14.0)" false
-  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
+  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
   _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
   _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
-  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: http://127.0.0.1:9200)" false
 
-  # Use the default version if no version is provided
-  if [[ -z "$KIBANA_VERSION" ]]; then
-    KIBANA_VERSION="8.14.0"
-  fi
-
-  # Use the default Elasticsearch host if not provided
-  if [[ -z "$ELASTIC_HOST" ]]; then
-    ELASTIC_HOST="http://127.0.0.1:9200"
-  fi
-
-  # Generate a random encryption key
-  ENCRYPTION_KEY=$(openssl rand -hex 32)
-
-  # Create Kibana container
-  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-  -p 5601:5601 \
-  --network host \
-  --volume $KIBANA_DATADIR:/usr/share/kibana/data \
-  --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
-  --env "ELASTICSEARCH_USERNAME=kibana_system" \
-  --env "ELASTICSEARCH_PASSWORD=$ELASTIC_KIBANA_PASSWORD" \
-  --env "XPACK_SECURITY_ENABLED=true" \
-  --env "XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=$ENCRYPTION_KEY" \
-  --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
-  --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
-  --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
+  # Use the default host if no host is provided
+  ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
 
   # Set the password for kibana_system user in Elasticsearch
   while true; do
@@ -294,29 +272,91 @@ kibana() {
     else
       echo "Failed to set password for kibana_system user. Response:"
       cat /tmp/response.json
-      echo "\n"
       _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
     fi
   done
 
+  # Set the password for kibana user in Elasticsearch
+  while true; do
+    response=$(curl -s -w "%{http_code}" -o /tmp/response.json -X POST "$ELASTIC_HOST/_security/user/$kibana_user/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$KIBANA_PWD\"}")
+    if [[ "$response" == "200" ]]; then
+      echo "Password set successfully for kibana user."
+      break
+    else
+      echo "Failed to set password for kibana user. Response:"
+      cat /tmp/response.json
+      _prompt_for_input_ KIBANA_PWD "Enter password for the Kibana login user" true
+    fi
+  done
+
+  # Get Kibana configuration inputs
+  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
+  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
+  _prompt_for_input_ KIBANA_PWD "Enter password for the Kibana login user" true
+
+  # Use the default version if no version is provided
+  KIBANA_VERSION="${KIBANA_VERSION:-$default_kibana_version}"
+
+  # Create Kibana container
+  docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+  --network host \
+  -p 5601:5601 \
+  --volume $KIBANA_DATADIR:/usr/share/kibana/data \
+  --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
+  --env "ELASTICSEARCH_USERNAME=kibana_system" \
+  --env "ELASTICSEARCH_PASSWORD=$ELASTIC_KIBANA_PASSWORD" \
+  --env "XPACK_SECURITY_ENABLED=true" \
+  --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
+  --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
+  --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
+
   # Wait for Kibana to be ready
   echo "Waiting for Kibana to be available..."
-  max_attempts=10
-  attempt_num=1
-  while [[ "$(curl -s -o /dev/null -w '%{http_code}' -u kibana_system:$ELASTIC_KIBANA_PASSWORD http://localhost:5601)" != "200" ]]; do
-    if [[ $attempt_num -ge $max_attempts ]]; then
-      echo "Kibana did not start within the expected time."
-      echo "Kibana logs:"
-      docker logs $KIBANA_CONTAINER_NAME
-      exit 1
+  while true; do
+    if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u $kibana_user:$KIBANA_PWD http://127.0.0.1:5601)" == "200" ]]; then
+      echo "Kibana is available."
+      break
     fi
-    echo "Waiting for Kibana to be available... (attempt: $attempt_num)"
-    attempt_num=$((attempt_num + 1))
+    echo "Kibana is not ready yet. Retrying in 10 seconds..."
     sleep 10
   done
 
   echo "Kibana setup and launch complete."
 }
+
+# Helper function to prompt for input
+_prompt_for_input_() {
+  local var_name="$1"
+  local prompt_message="$2"
+  local hidden="${3:-false}"
+
+  if [ "$hidden" = true ]; then
+    read -sp "$prompt_message: " input
+    echo
+  else
+    read -p "$prompt_message: " input
+  fi
+
+  export "$var_name"="$input"
+}
+
+
+# Helper function to prompt for input
+_prompt_for_input_() {
+  local var_name="$1"
+  local prompt_message="$2"
+  local hidden="${3:-false}"
+
+  if [ "$hidden" = true ]; then
+    read -sp "$prompt_message: " input
+    echo
+  else
+    read -p "$prompt_message: " input
+  fi
+
+  export "$var_name"="$input"
+}
+
 
 neo4j () {
 
