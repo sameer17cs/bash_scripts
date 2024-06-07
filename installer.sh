@@ -263,6 +263,7 @@ add_elasticsearch_user() {
     else
       echo "Failed to set password for $username_to_add user. Response:"
       cat $temp_file
+      echo "\n"
     fi
   done
   rm $temp_file
