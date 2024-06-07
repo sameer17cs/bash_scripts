@@ -214,13 +214,17 @@ redis () {
   echo "Redis version: $REDIS_VERSION"
 }
 
-elasticsearch () {
-
+elasticsearch() {
   ES_CONTAINER_NAME="elasticsearch"
 
+  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14)" false
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
-
   _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
+
+  # Use the default version if no version is provided
+  if [[ -z "$VERSION" ]]; then
+    VERSION="8.14"
+  fi
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 9200:9200 -p 9300:9300 \
@@ -230,16 +234,22 @@ elasticsearch () {
   --env "ELASTIC_PASSWORD=$PWD" \
   --env "xpack.security.enabled=true" \
   --ulimit memlock=-1:-1 \
-  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:latest
+  --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:$VERSION
 }
 
 kibana() {
   KIBANA_CONTAINER_NAME="kibana"
 
+  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: 8.14)" false
   _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
   _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
-  _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user (can be empty)" true
+  _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
   _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: http://localhost:9200)" false
+
+  # Use the default version if no version is provided
+  if [[ -z "$KIBANA_VERSION" ]]; then
+    KIBANA_VERSION="8.14"
+  fi
 
   # Use the default Elasticsearch host if not provided
   if [[ -z "$ELASTIC_HOST" ]]; then
@@ -257,7 +267,7 @@ kibana() {
   --env "XPACK_SECURITY_ENCRYPTIONKEY=$(openssl rand -hex 32)" \
   --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
-  --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:latest
+  --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
 
   # Wait for Elasticsearch to start
   echo "Waiting for Elasticsearch to start..."
