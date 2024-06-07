@@ -251,6 +251,20 @@ add_elasticsearch_user() {
   local password_var="${username}_password"
   local temp_file="/tmp/response.json"
 
+  # Ensure Elasticsearch root user password is correct
+  while true; do
+    _prompt_for_input_ "ELASTIC_PASSWORD" "Enter password for the Elasticsearch root user" true
+
+    # Test the root user password
+    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
+      echo "Elasticsearch root user password is correct."
+      break
+    else
+      echo "Invalid Elasticsearch root user password. Please try again."
+    fi
+  done
+
+  # Prompt for the user's password
   _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
 
   # Set the password for the user in Elasticsearch
