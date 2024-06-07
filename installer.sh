@@ -265,11 +265,11 @@ kibana() {
   add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "$ELASTIC_HOST"
   local kibana_system_password="${!kibana_system_password_var_name}"
 
-  echo $kibana_system_password
-
   #kibana login user
   local kibana_login_user="kibana"
-  kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST" | tee /dev/tty)
+  local kibana_login_password_var_name="kibana_login_password"
+  add_elasticsearch_user "$kibana_login_user" "$kibana_login_password_var_name" "$ELASTIC_HOST"
+  local kibana_login_password="${!kibana_login_password_var_name}"
 
   #data directory for kibana
   _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
