@@ -419,7 +419,6 @@ add_elasticsearch_user() {
     else
       echo -e "${C_RED}Failed to set password for $username_to_add user ${C_DEFAULT}"
       cat $temp_file
-      echo "\n"
     fi
   done
   rm $temp_file
