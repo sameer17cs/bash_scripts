@@ -263,7 +263,7 @@ kibana() {
   local kibana_system_user="kibana_system"
   local kibana_system_password_var_name="kibana_system_password"
   add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "$ELASTIC_HOST"
-  local kibana_system_password="${!password_var_name}"
+  local kibana_system_password="${!kibana_system_password_var_name}"
 
   echo $kibana_system_password
 
@@ -394,7 +394,7 @@ add_elasticsearch_user() {
   local ELASTIC_HOST="$3"
   local temp_file="/tmp/response.json"
 
-  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch...${C_DEFAULT}"
+  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch${C_DEFAULT}"
 
   # Get Elasticsearch root user password
   while true; do
@@ -404,7 +404,7 @@ add_elasticsearch_user() {
     if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
       break
     else
-      echo "Invalid Elasticsearch root user password. Please try again."
+      echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
     fi
   done
 
