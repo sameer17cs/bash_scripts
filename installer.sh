@@ -262,7 +262,7 @@ kibana() {
 
   local kibana_system_user="kibana_system"
   local kibana_system_password_var_name="kibana_system_password"
-  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_system_user" "$kibana_system_password_var_name" "kibana_system"
+  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_system_user" "$kibana_system_password_var_name"
   local kibana_system_password="${!kibana_system_password_var_name}"
 
   #kibana login user
@@ -392,10 +392,10 @@ add_elasticsearch_user() {
   local ELASTIC_HOST="$1"
   local username_to_add="$2"
   local password_var_name="$3"
-  local role_to_assign="$4"
+  local role_to_assign="${4:-}"
   local temp_file="/tmp/response.json"
 
-  echo -e "${C_GREEN} Welcome to Elasticsearch user creation...${C_DEFAULT}"
+  echo -e "${C_GREEN}Creating Elasticsearch user '${username_to_add}'...${C_DEFAULT}"
 
   # Get Elasticsearch root user password
   while true; do
@@ -415,7 +415,11 @@ add_elasticsearch_user() {
   local user_password="${!password_var_name}"
 
   # Prepare the user creation JSON payload
-  payload="{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"]}"
+  if [[ -n "$role_to_assign" ]]; then
+    payload="{\"password\":\"$user_password\",\"roles\":[\"$role_to_assign\"],\"full_name\":\"Kibana User\"}"
+  else
+    payload="{\"password\":\"$user_password\"}"
+  fi
 
   # Create or update the user
   response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
