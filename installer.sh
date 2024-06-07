@@ -266,7 +266,7 @@ kibana() {
 
   #kibana login user
   local kibana_login_user="kibana"
-  kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST")
+  kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST" | tee /dev/tty)
 
   #data directory for kibana
   _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
@@ -390,6 +390,8 @@ add_elasticsearch_user() {
   local ELASTIC_HOST="$2"
   local password_var="${username_to_add}_password"
   local temp_file="/tmp/response.json"
+
+  echo -e "${C_GREEN}Welcome to user setup of Elasticsearch...${C_DEFAULT}"
 
   # get Elasticsearch root user password
   while true; do

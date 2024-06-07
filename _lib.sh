@@ -38,7 +38,7 @@ _prompt_for_input_() {
     read -p "$prompt_message: " input
     if [[ -z "$input" ]]; then
       if [[ "$required" == "true" ]]; then
-        echo "Input required, please try again."
+        echo -e "${C_RED}Input required, please try again...${C_DEFAULT}"
       else
         export $var_name=""
         break
