@@ -216,7 +216,7 @@ redis () {
 
 elasticsearch() {
   local ES_CONTAINER_NAME="elasticsearch"
-  local ELASTIC_HOST="http://127.0.0.1:9200"
+  local default_version="8.14.0"
 
   _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
@@ -224,10 +224,7 @@ elasticsearch() {
   _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
 
-  # Use the default version if no version is provided
-  if [[ -z "$VERSION" ]]; then
-    VERSION="8.14.0"
-  fi
+  VERSION="${VERSION:-$default_version}"
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 9200:9200 -p 9300:9300 \
@@ -243,51 +240,54 @@ elasticsearch() {
 
   # Wait for Elasticsearch to be ready
   echo "Waiting for Elasticsearch to be available..."
-  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD $ELASTIC_HOST | grep -q "200"; do
+  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD http://127.0.0.1:9200 | grep -q "200"; do
     echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
     sleep 5
   done
 }
+
+add_elasticsearch_user() {
+
+  local username="$1"
+  local password_var=""
+  local temp_file="/tmp/response.json"
+
+  _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
+
+  # Set the password for the user in Elasticsearch
+  while true; do
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"${!password_var}\"}")
+    if [[ "$response" == "200" ]]; then
+      echo "Password set successfully for $username user."
+      break
+    else
+      echo "Failed to set password for $username user. Response:"
+      cat $temp_file
+      _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
+    fi
+  done
+
+  rm $$temp_file
+}
+
 
 kibana() {
   KIBANA_CONTAINER_NAME="kibana"
   
   local default_elastic_host="http://127.0.0.1:9200"
   local default_kibana_version="8.14.0"
-  local kibana_user="kibana"
 
   _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
-  _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
   _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
 
   # Use the default host if no host is provided
   ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
 
   # Set the password for kibana_system user in Elasticsearch
-  while true; do
-    response=$(curl -s -w "%{http_code}" -o /tmp/response.json -X POST "$ELASTIC_HOST/_security/user/kibana_system/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$ELASTIC_KIBANA_PASSWORD\"}")
-    if [[ "$response" == "200" ]]; then
-      echo "Password set successfully for kibana_system user."
-      break
-    else
-      echo "Failed to set password for kibana_system user. Response:"
-      cat /tmp/response.json
-      _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
-    fi
-  done
+  add_elasticsearch_user kibana_system
 
   # Set the password for kibana user in Elasticsearch
-  while true; do
-    response=$(curl -s -w "%{http_code}" -o /tmp/response.json -X POST "$ELASTIC_HOST/_security/user/$kibana_user/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$KIBANA_PWD\"}")
-    if [[ "$response" == "200" ]]; then
-      echo "Password set successfully for kibana user."
-      break
-    else
-      echo "Failed to set password for kibana user. Response:"
-      cat /tmp/response.json
-      _prompt_for_input_ KIBANA_PWD "Enter password for the Kibana login user" true
-    fi
-  done
+  add_elasticsearch_user kibana
 
   # Get Kibana configuration inputs
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
