@@ -299,40 +299,6 @@ kibana() {
   echo "Kibana setup and launch complete."
 }
 
-# Helper function to prompt for input
-_prompt_for_input_() {
-  local var_name="$1"
-  local prompt_message="$2"
-  local hidden="${3:-false}"
-
-  if [ "$hidden" = true ]; then
-    read -sp "$prompt_message: " input
-    echo
-  else
-    read -p "$prompt_message: " input
-  fi
-
-  export "$var_name"="$input"
-}
-
-
-# Helper function to prompt for input
-_prompt_for_input_() {
-  local var_name="$1"
-  local prompt_message="$2"
-  local hidden="${3:-false}"
-
-  if [ "$hidden" = true ]; then
-    read -sp "$prompt_message: " input
-    echo
-  else
-    read -p "$prompt_message: " input
-  fi
-
-  export "$var_name"="$input"
-}
-
-
 neo4j () {
 
   AUTH_USERNAME="neo4j"
