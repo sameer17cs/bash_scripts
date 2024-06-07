@@ -247,39 +247,24 @@ elasticsearch() {
 }
 
 add_elasticsearch_user() {
-  local username="$1"
-  local password_var="${username}_password"
+  local username_to_add="$1"
+  local elastic_root_password="$2"
+  local password_var="${username_to_add}_password"
   local temp_file="/tmp/response.json"
-
-  # Ensure Elasticsearch root user password is correct
-  while true; do
-    _prompt_for_input_ "ELASTIC_PASSWORD" "Enter password for the Elasticsearch root user" true
-
-    # Test the root user password
-    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
-      echo "Elasticsearch root user password is correct."
-      break
-    else
-      echo "Invalid Elasticsearch root user password. Please try again."
-    fi
-  done
-
-  # Prompt for the user's password
-  _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
 
   # Set the password for the user in Elasticsearch
   while true; do
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"${!password_var}\"}")
+    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
+
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
     if [[ "$response" == "200" ]]; then
-      echo "Password set successfully for $username user."
+      echo "Password set successfully for $username_to_add user."
       break
     else
-      echo "Failed to set password for $username user. Response:"
+      echo "Failed to set password for $username_to_add user. Response:"
       cat $temp_file
-      _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
     fi
   done
-
   rm $temp_file
 }
 
@@ -291,16 +276,27 @@ kibana() {
   local default_kibana_version="8.14.0"
 
   _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
-  _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
 
   # Use the default host if no host is provided
   ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
 
+  # get Elasticsearch root user password
+  while true; do
+    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
+
+    # Test the root user password
+    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
+      break
+    else
+      echo "Invalid Elasticsearch root user password. Please try again."
+    fi
+  done
+
   # Set the password for kibana_system user in Elasticsearch
-  add_elasticsearch_user "kibana_system"
+  add_elasticsearch_user "kibana_system" "$ELASTIC_ROOT_PASSWORD"
 
   # Set the password for kibana user in Elasticsearch
-  add_elasticsearch_user "kibana"
+  add_elasticsearch_user "kibana" "$ELASTIC_ROOT_PASSWORD"
 
   # Get Kibana configuration inputs
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
