@@ -262,7 +262,7 @@ kibana() {
 
   #kibana_system user
   local kibana_system_user="kibana_system"
-  kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST")
+  kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST" | tee /dev/tty)
 
   #kibana login user
   local kibana_login_user="kibana"
