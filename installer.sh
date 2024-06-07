@@ -256,8 +256,18 @@ kibana() {
 
   # Use the default Elasticsearch host if not provided
   if [[ -z "$ELASTIC_HOST" ]]; then
-    ELASTIC_HOST="http://localhost:9200"
+    ELASTIC_HOST="http://127.0.0.1:9200"
   fi
+
+  # Wait for Elasticsearch to be ready
+  echo "Waiting for Elasticsearch to be available..."
+  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$ELASTIC_PASSWORD $ELASTIC_HOST | grep -q "200"; do
+    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
+    sleep 5
+  done
+
+  # Generate a random encryption key if not set
+  ENCRYPTION_KEY=$(openssl rand -hex 32)
 
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
@@ -267,10 +277,24 @@ kibana() {
   --env "ELASTICSEARCH_USERNAME=kibana_system" \
   --env "ELASTICSEARCH_PASSWORD=$ELASTIC_KIBANA_PASSWORD" \
   --env "XPACK_SECURITY_ENABLED=true" \
-  --env "XPACK_SECURITY_ENCRYPTIONKEY=$(openssl rand -hex 32)" \
+  --env "XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=$ENCRYPTION_KEY" \
   --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
   --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
+
+  # Wait for Kibana to be ready
+  echo "Waiting for Kibana to be available..."
+  max_attempts=10
+  attempt_num=1
+  while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' -u kibana_system:$ELASTIC_KIBANA_PASSWORD http://localhost:5601)" != "200" ]]; do
+    if [[ $attempt_num -ge $max_attempts ]]; then
+      echo "Kibana did not start within the expected time."
+      exit 1
+    fi
+    echo "Waiting for Kibana to be available... (attempt: $attempt_num)"
+    attempt_num=$((attempt_num + 1))
+    sleep 10
+  done
 
   # Set the password for kibana_system user in Elasticsearch
   echo "Setting password for kibana_system user in Elasticsearch..."
@@ -278,7 +302,6 @@ kibana() {
 
   echo "Kibana setup and launch complete."
 }
-
 neo4j () {
 
   AUTH_USERNAME="neo4j"
