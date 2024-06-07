@@ -217,9 +217,11 @@ redis () {
 elasticsearch() {
   ES_CONTAINER_NAME="elasticsearch"
 
-  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14)" false
+  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
   _prompt_for_input_ PWD "Enter password for the Elasticsearch root user" true
+  _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
+  _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
 
   # Use the default version if no version is provided
   if [[ -z "$VERSION" ]]; then
@@ -233,6 +235,7 @@ elasticsearch() {
   --env "discovery.type=single-node" \
   --env "ELASTIC_PASSWORD=$PWD" \
   --env "xpack.security.enabled=true" \
+  --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
   --ulimit memlock=-1:-1 \
   --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:$VERSION
 }
