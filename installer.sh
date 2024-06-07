@@ -386,7 +386,7 @@ main() {
     mysql
     redis
     elasticsearch
-    elk_stack
+    kibana
     neo4j
     redash
     metabase
