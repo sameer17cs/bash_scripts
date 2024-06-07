@@ -262,8 +262,14 @@ kibana() {
 
   local kibana_system_user="kibana_system"
   local kibana_system_password_var_name="kibana_system_password"
-  add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "kibana_admin" "$ELASTIC_HOST"
+  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_system_user" "$kibana_system_password_var_name"
   local kibana_system_password="${!kibana_system_password_var_name}"
+
+  #kibana login user
+  local kibana_login_user="kibana"
+  local kibana_login_password_var_name="kibana_login_password"
+  add_elasticsearch_user "$ELASTIC_HOST" "$kibana_login_user" "$kibana_login_password_var_name" "kibana_admin"
+  local kibana_login_password="${!kibana_login_password_var_name}"
 
   #data directory for kibana
   _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
@@ -383,9 +389,9 @@ metabase () {
 }
 
 add_elasticsearch_user() {
-  local username_to_add="$1"
-  local password="$2"
-  local ELASTIC_HOST="$3"
+  local ELASTIC_HOST="$1"
+  local username_to_add="$2"
+  local password="$3"
   local role_to_assign="${4:-}"
   local temp_file="/tmp/response.json"
 
