@@ -260,11 +260,12 @@ kibana() {
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
   KIBANA_VERSION="${KIBANA_VERSION:-$default_kibana_version}"
 
-  kibana_system_password=$(add_elasticsearch_user "kibana_system" "$ELASTIC_HOST" 2>&1)
-
-  #kibana_system user
   local kibana_system_user="kibana_system"
-  kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST" | tee /dev/tty)
+  local kibana_system_password_var_name="kibana_system_password"
+  add_elasticsearch_user "$kibana_system_user" "$kibana_system_password_var_name" "$ELASTIC_HOST"
+  local kibana_system_password="${!password_var_name}"
+
+  echo $kibana_system_password
 
   #kibana login user
   local kibana_login_user="kibana"
@@ -389,13 +390,13 @@ metabase () {
 
 add_elasticsearch_user() {
   local username_to_add="$1"
-  local ELASTIC_HOST="$2"
-  local password_var="${username_to_add}_password"
+  local password_var_name="$2"
+  local ELASTIC_HOST="$3"
   local temp_file="/tmp/response.json"
 
   echo -e "${C_GREEN}Welcome to user setup of Elasticsearch...${C_DEFAULT}"
 
-  # get Elasticsearch root user password
+  # Get Elasticsearch root user password
   while true; do
     _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
 
@@ -407,10 +408,11 @@ add_elasticsearch_user() {
     fi
   done
 
+  # Get and set password for the new user
   while true; do
-    _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username_to_add'" true
+    _prompt_for_input_ "$password_var_name" "Enter password for the Elasticsearch user '$username_to_add'" true
 
-    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$elastic_root_password" -d "{\"password\":\"${!password_var}\"}")
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$username_to_add/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "{\"password\":\"${!password_var_name}\"}")
     if [[ "$response" == "200" ]]; then
       echo "Password set successfully for $username_to_add user."
       break
@@ -421,10 +423,9 @@ add_elasticsearch_user() {
     fi
   done
 
-  local user_password="${!password_var}"
   rm $temp_file
-  echo "$user_password"
 }
+
 
 ensure_directory_exists() {
   local dir_path="$1"
