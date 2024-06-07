@@ -262,11 +262,11 @@ kibana() {
 
   #kibana_system user
   local kibana_system_user="kibana_system"
-  local kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST")
+  kibana_system_password=$(add_elasticsearch_user "$kibana_system_user" "$ELASTIC_HOST")
 
   #kibana login user
   local kibana_login_user="kibana"
-  local kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST")
+  kibana_login_password=$(add_elasticsearch_user "$kibana_login_user" "$ELASTIC_HOST")
 
   #data directory for kibana
   _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
