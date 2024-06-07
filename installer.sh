@@ -243,7 +243,7 @@ elasticsearch() {
 kibana() {
   KIBANA_CONTAINER_NAME="kibana"
 
-  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: 8.14)" false
+  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: 8.14.0)" false
   _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
   _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
   _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
@@ -259,6 +259,20 @@ kibana() {
     ELASTIC_HOST="http://localhost:9200"
   fi
 
+  # Wait for Elasticsearch to start
+  echo "Waiting for Elasticsearch to start..."
+  max_attempts=10
+  attempt_num=1
+  while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' $ELASTIC_HOST)" != "200" ]]; do
+    if [[ $attempt_num -ge $max_attempts ]]; then
+      echo "Elasticsearch did not start within the expected time."
+      exit 1
+    fi
+    echo "Waiting for Elasticsearch to be available... (attempt: $attempt_num)"
+    attempt_num=$((attempt_num + 1))
+    sleep 5
+  done
+
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 5601:5601 \
@@ -271,10 +285,6 @@ kibana() {
   --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
   --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
-
-  # Wait for Elasticsearch to start
-  echo "Waiting for Elasticsearch to start..."
-  sleep 30  # Adjust this sleep time as needed for your environment
 
   # Set the password for kibana_system user in Elasticsearch
   echo "Setting password for kibana_system user in Elasticsearch..."
