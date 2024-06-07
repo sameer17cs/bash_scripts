@@ -215,7 +215,8 @@ redis () {
 }
 
 elasticsearch() {
-  ES_CONTAINER_NAME="elasticsearch"
+  local ES_CONTAINER_NAME="elasticsearch"
+  local ELASTIC_HOST="http://127.0.0.1:9200"
 
   _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
   _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
@@ -238,6 +239,14 @@ elasticsearch() {
   --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
   --ulimit memlock=-1:-1 \
   --name $ES_CONTAINER_NAME docker.elastic.co/elasticsearch/elasticsearch:$VERSION
+
+
+  # Wait for Elasticsearch to be ready
+  echo "Waiting for Elasticsearch to be available..."
+  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD $ELASTIC_HOST | grep -q "200"; do
+    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
+    sleep 5
+  done
 }
 
 kibana() {
@@ -247,7 +256,7 @@ kibana() {
   _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
   _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
   _prompt_for_input_ ELASTIC_PASSWORD "Enter password for the Elasticsearch root user" true
-  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: http://localhost:9200)" false
+  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: http://127.0.0.1:9200)" false
 
   # Use the default version if no version is provided
   if [[ -z "$KIBANA_VERSION" ]]; then
@@ -259,14 +268,7 @@ kibana() {
     ELASTIC_HOST="http://127.0.0.1:9200"
   fi
 
-  # Wait for Elasticsearch to be ready
-  echo "Waiting for Elasticsearch to be available..."
-  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$ELASTIC_PASSWORD $ELASTIC_HOST | grep -q "200"; do
-    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
-    sleep 5
-  done
-
-  # Generate a random encryption key if not set
+  # Generate a random encryption key
   ENCRYPTION_KEY=$(openssl rand -hex 32)
 
   # Create Kibana container
@@ -282,13 +284,28 @@ kibana() {
   --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
   --name $KIBANA_CONTAINER_NAME docker.elastic.co/kibana/kibana:$KIBANA_VERSION
 
+  # Set the password for kibana_system user in Elasticsearch
+  while true; do
+    response=$(curl -s -w "%{http_code}" -o /tmp/response.json -X POST "$ELASTIC_HOST/_security/user/kibana_system/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$ELASTIC_KIBANA_PASSWORD\"}")
+    if [[ "$response" == "200" ]]; then
+      echo "Password set successfully for kibana_system user."
+      break
+    else
+      echo "Failed to set password for kibana_system user. Response:"
+      cat /tmp/response.json
+      _prompt_for_input_ ELASTIC_KIBANA_PASSWORD "Enter password for the Kibana system user" true
+    fi
+  done
+
   # Wait for Kibana to be ready
   echo "Waiting for Kibana to be available..."
   max_attempts=10
   attempt_num=1
-  while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' -u kibana_system:$ELASTIC_KIBANA_PASSWORD http://localhost:5601)" != "200" ]]; do
+  while [[ "$(curl -s -o /dev/null -w '%{http_code}' -u kibana_system:$ELASTIC_KIBANA_PASSWORD http://localhost:5601)" != "200" ]]; do
     if [[ $attempt_num -ge $max_attempts ]]; then
       echo "Kibana did not start within the expected time."
+      echo "Kibana logs:"
+      docker logs $KIBANA_CONTAINER_NAME
       exit 1
     fi
     echo "Waiting for Kibana to be available... (attempt: $attempt_num)"
@@ -296,12 +313,9 @@ kibana() {
     sleep 10
   done
 
-  # Set the password for kibana_system user in Elasticsearch
-  echo "Setting password for kibana_system user in Elasticsearch..."
-  curl -X POST "$ELASTIC_HOST/_security/user/kibana_system/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_PASSWORD" -d "{\"password\":\"$ELASTIC_KIBANA_PASSWORD\"}"
-
   echo "Kibana setup and launch complete."
 }
+
 neo4j () {
 
   AUTH_USERNAME="neo4j"
