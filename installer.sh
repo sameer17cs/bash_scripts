@@ -247,9 +247,8 @@ elasticsearch() {
 }
 
 add_elasticsearch_user() {
-
   local username="$1"
-  local password_var=""
+  local password_var="${username}_password"
   local temp_file="/tmp/response.json"
 
   _prompt_for_input_ "$password_var" "Enter password for the Elasticsearch user '$username'" true
@@ -267,7 +266,7 @@ add_elasticsearch_user() {
     fi
   done
 
-  rm $$temp_file
+  rm $temp_file
 }
 
 
