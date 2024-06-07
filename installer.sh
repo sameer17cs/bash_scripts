@@ -241,8 +241,8 @@ elasticsearch() {
   # Wait for Elasticsearch to be ready
   echo "Waiting for Elasticsearch to be available..."
   until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD http://127.0.0.1:9200 | grep -q "200"; do
-    echo "Elasticsearch is not ready yet. Retrying in 5 seconds..."
-    sleep 5
+    echo "Elasticsearch is not ready yet. Retrying in 30 seconds..."
+    sleep 30
   done
 }
 
@@ -284,10 +284,10 @@ kibana() {
   ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
 
   # Set the password for kibana_system user in Elasticsearch
-  add_elasticsearch_user kibana_system
+  add_elasticsearch_user "kibana_system"
 
   # Set the password for kibana user in Elasticsearch
-  add_elasticsearch_user kibana
+  add_elasticsearch_user "kibana"
 
   # Get Kibana configuration inputs
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
@@ -317,8 +317,8 @@ kibana() {
       echo "Kibana is available."
       break
     fi
-    echo "Kibana is not ready yet. Retrying in 10 seconds..."
-    sleep 10
+    echo "Kibana is not ready yet. Retrying in 30 seconds..."
+    sleep 30
   done
 
   echo "Kibana setup and launch complete."
