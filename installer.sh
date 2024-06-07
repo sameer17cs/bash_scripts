@@ -259,20 +259,6 @@ kibana() {
     ELASTIC_HOST="http://localhost:9200"
   fi
 
-  # Wait for Elasticsearch to start
-  echo "Waiting for Elasticsearch to start..."
-  max_attempts=10
-  attempt_num=1
-  while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' $ELASTIC_HOST)" != "200" ]]; do
-    if [[ $attempt_num -ge $max_attempts ]]; then
-      echo "Elasticsearch did not start within the expected time."
-      exit 1
-    fi
-    echo "Waiting for Elasticsearch to be available... (attempt: $attempt_num)"
-    attempt_num=$((attempt_num + 1))
-    sleep 5
-  done
-
   # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   -p 5601:5601 \
