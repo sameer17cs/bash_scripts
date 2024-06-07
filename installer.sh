@@ -243,6 +243,7 @@ elk_stack() {
     ELK_VERSION="8.14.0"
   fi
 
+  _prompt_for_input_ ELASTIC_PASSWORD "Enter elasticsearch default password (user: elastic)" true
   _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_DATA_PATH "Enter path for Elasticsearch data" true
