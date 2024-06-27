@@ -5,6 +5,8 @@ FILE_MAX=9999999
 SOFT_LIMIT=9999999
 HARD_LIMIT=9999999
 
+LIB_SCRIPT="_lib.sh"
+
 # Function to update /etc/sysctl.conf
 update_sysctl_conf() {
   local sysctl_conf="/etc/sysctl.conf"
@@ -53,7 +55,8 @@ apply_changes() {
 
 # Main function
 main() {
-  echo "Updating system file descriptor limits..."
+  source $LIB_SCRIPT
+  echo -e "${C_GREEN}Updating system file descriptor limits...${C_DEFAULT}"
   update_sysctl_conf
   update_limits_conf
   update_pam_limits
