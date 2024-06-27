@@ -50,7 +50,7 @@ update_pam_limits() {
 # Apply changes and reboot
 apply_changes() {
   sudo sysctl -p
-  echo "Changes applied. A reboot is recommended to fully apply all changes."
+  echo -e "${C_GREEN}Changes applied. A reboot is recommended to fully apply all changes.${C_DEFAULT}"
 }
 
 # Main function
