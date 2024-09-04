@@ -1,67 +1,74 @@
 #!/bin/bash
 
-# Set the desired file descriptor limit
-FILE_MAX=9999999
-SOFT_LIMIT=9999999
-HARD_LIMIT=9999999
+# Define the new file descriptor limit
+NEW_LIMIT=500000
+NEW_FILE_MAX=1000000
+USER=$(whoami)
 
-LIB_SCRIPT="_lib.sh"
-
-# Function to update /etc/sysctl.conf
-update_sysctl_conf() {
-  local sysctl_conf="/etc/sysctl.conf"
-  if grep -q "fs.file-max" "$sysctl_conf"; then
-    sudo sed -i "s/^fs.file-max.*/fs.file-max = $FILE_MAX/" "$sysctl_conf"
-  else
-    echo "fs.file-max = $FILE_MAX" | sudo tee -a "$sysctl_conf"
-  fi
-  echo -e "${C_BLUE}Modified $sysctl_conf${C_DEFAULT}"
-}
-
-# Function to update /etc/security/limits.conf
-update_limits_conf() {
-  local limits_conf="/etc/security/limits.conf"
-  if ! grep -q "\* soft nofile" "$limits_conf"; then
-    echo "* soft nofile $SOFT_LIMIT" | sudo tee -a "$limits_conf"
-  else
-    sudo sed -i "s/^\* soft nofile.*/\* soft nofile $SOFT_LIMIT/" "$limits_conf"
-  fi
-
-  if ! grep -q "\* hard nofile" "$limits_conf"; then
-    echo "* hard nofile $HARD_LIMIT" | sudo tee -a "$limits_conf"
-  else
-    sudo sed -i "s/^\* hard nofile.*/\* hard nofile $HARD_LIMIT/" "$limits_conf"
-  fi
-
-  echo -e "${C_BLUE}Modified $limits_conf${C_DEFAULT}"
-}
-
-# Function to update PAM configuration
-update_pam_limits() {
-  local pam_files=("/etc/pam.d/common-session" "/etc/pam.d/common-session-noninteractive")
-  for file in "${pam_files[@]}"; do
-    if ! grep -q "session required pam_limits.so" "$file"; then
-      echo "session required pam_limits.so" | sudo tee -a "$file"
-      echo -e "${C_BLUE}Modified $file${C_DEFAULT}"
+# Function to update the system-wide file descriptor limit
+update_sysctl() {
+    echo "Updating /etc/sysctl.conf with fs.file-max=$NEW_FILE_MAX"
+    if grep -q "fs.file-max" /etc/sysctl.conf; then
+        sudo sed -i 's/fs.file-max.*/fs.file-max = '"$NEW_FILE_MAX"'/g' /etc/sysctl.conf
+    else
+        echo "fs.file-max = $NEW_FILE_MAX" | sudo tee -a /etc/sysctl.conf
     fi
-  done
+    sudo sysctl -p
 }
 
-# Apply changes and reboot
-apply_changes() {
-  sudo sysctl -p
-  echo -e "${C_GREEN}Changes applied. A reboot is recommended to fully apply all changes.${C_DEFAULT}"
+# Function to update the per-user limits in limits.conf
+update_limits_conf() {
+    echo "Updating /etc/security/limits.conf with soft and hard nofile limits"
+    if ! grep -q "$USER soft nofile" /etc/security/limits.conf; then
+        echo "$USER soft nofile $NEW_LIMIT" | sudo tee -a /etc/security/limits.conf
+    else
+        sudo sed -i 's/'"$USER"' soft nofile.*/'"$USER"' soft nofile '"$NEW_LIMIT"'/g' /etc/security/limits.conf
+    fi
+
+    if ! grep -q "$USER hard nofile" /etc/security/limits.conf; then
+        echo "$USER hard nofile $NEW_LIMIT" | sudo tee -a /etc/security/limits.conf
+    else
+        sudo sed -i 's/'"$USER"' hard nofile.*/'"$USER"' hard nofile '"$NEW_LIMIT"'/g' /etc/security/limits.conf
+    fi
 }
 
-# Main function
-main() {
-  source $LIB_SCRIPT
-  echo -e "${C_GREEN}Updating system file descriptor limits...${C_DEFAULT}"
-  update_sysctl_conf
-  update_limits_conf
-  update_pam_limits
-  apply_changes
+# Function to update the PAM configuration
+update_pam_config() {
+    echo "Updating PAM configuration"
+    if ! grep -q "session required pam_limits.so" /etc/pam.d/common-session; then
+        echo "session required pam_limits.so" | sudo tee -a /etc/pam.d/common-session
+    fi
+    
+    if ! grep -q "session required pam_limits.so" /etc/pam.d/common-session-noninteractive; then
+        echo "session required pam_limits.so" | sudo tee -a /etc/pam.d/common-session-noninteractive
+    fi
 }
 
-# Run the main function
-main
+# Function to update systemd system.conf and user.conf
+update_systemd_conf() {
+    echo "Updating systemd limits in /etc/systemd/system.conf and /etc/systemd/user.conf"
+    sudo sed -i 's/^#DefaultLimitNOFILE=.*/DefaultLimitNOFILE='"$NEW_LIMIT"'/' /etc/systemd/system.conf
+    sudo sed -i 's/^#DefaultLimitNOFILE=.*/DefaultLimitNOFILE='"$NEW_LIMIT"'/' /etc/systemd/user.conf
+
+    if ! grep -q "^DefaultLimitNOFILE" /etc/systemd/system.conf; then
+        echo "DefaultLimitNOFILE=$NEW_LIMIT" | sudo tee -a /etc/systemd/system.conf
+    fi
+
+    if ! grep -q "^DefaultLimitNOFILE" /etc/systemd/user.conf; then
+        echo "DefaultLimitNOFILE=$NEW_LIMIT" | sudo tee -a /etc/systemd/user.conf
+    fi
+}
+
+# Apply changes
+update_sysctl
+update_limits_conf
+update_pam_config
+update_systemd_conf
+
+# Reload systemd configuration
+echo "Reloading systemd daemon"
+sudo systemctl daemon-reload
+
+# Display instructions
+echo "Reboot your system or log out and log back in to apply the changes."
+echo "To check the new limit, run: ulimit -n"
