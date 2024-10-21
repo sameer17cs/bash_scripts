@@ -66,6 +66,36 @@ resize_disk() {
   echo -e "${C_GREEN} Filesystem resize completed on $device_path.${C_DEFAULT}"
 }
 
+rsync() {
+  # Prompt for input values
+  _prompt_for_input_ source_dir "Enter the source directory" true
+  
+  # Validate source directory
+  while [[ ! -d "$source_dir" ]]; do
+    echo -e "${C_RED}Source directory does not exist. Please provide a valid directory.${C_DEFAULT}"
+    _prompt_for_input_ source_dir "Enter the source directory" true
+  done
+
+  _prompt_for_input_ dest_dir "Enter the destination directory" true
+  
+  # Validate destination directory
+  while [[ ! -d "$dest_dir" ]]; do
+    echo -e "${C_RED}Destination directory does not exist. Please provide a valid directory.${C_DEFAULT}"
+    _prompt_for_input_ dest_dir "Enter the destination directory" true
+  done
+
+  _prompt_for_input_ parallel_count "Enter the number of parallel threads" true
+  
+  # Validate parallel thread count
+  while ! [[ "$parallel_count" =~ ^[0-9]+$ ]]; do
+    echo -e "${C_RED}Invalid parallel thread count. Please provide a positive integer.${C_DEFAULT}"
+    _prompt_for_input_ parallel_count "Enter the number of parallel threads" true
+  done
+
+  # Perform parallel rsync copying
+  ls "$source_dir" | xargs -n1 -P"$parallel_count" -I% rsync -Pa "$source_dir/%" "$dest_dir/"
+}
+
 add_ssh_key() {
   _prompt_for_input_ SSH_KEY_PATH "Please enter the full path of your SSH private key" true
   
