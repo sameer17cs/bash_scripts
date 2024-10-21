@@ -117,6 +117,7 @@ main () {
   declare -a FUNCTIONS=(
     mount_disk
     resize_disk
+    rsync
     add_ssh_key
     distribute_files
   )
