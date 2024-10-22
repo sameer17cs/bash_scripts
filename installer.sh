@@ -166,17 +166,26 @@ nginx_certbot() {
   sudo service nginx restart
 }
 
-mongodb () {
-
+mongodb() {
   local container_name="mongodb"
 
   _prompt_for_input_ DATADIR "Enter MongoDB data directory full path" true
   ensure_directory_exists "$DATADIR"
 
+  # Prompt for MongoDB version (optional)
+  _prompt_for_input_ VERSION "Enter MongoDB version (leave empty for latest)" false
+
+  # Determine which version to use
+  if [[ -n "$VERSION" ]]; then
+    mongo_image="mongo:$VERSION"
+  else
+    mongo_image="mongo"
+  fi
+
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
   --volume $DATADIR:/data/db \
   -p 27017:27017 \
-  --name $container_name mongo --quiet
+  --name $container_name $mongo_image --quiet
 
   MONGODB_VERSION=$(docker exec $container_name mongod --version | awk '/version/ {print $3}')
   echo -e "${C_BLUE}Mongodb version $MONGODB_VERSION${C_DEFAULT}"
