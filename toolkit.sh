@@ -39,13 +39,13 @@ mount_disk() {
     # Format the disk with the selected filesystem
     case $FILESYSTEM_TYPE in
       ext4)
-        sudo mkfs.ext4 -I 128 $device_path
+        sudo mkfs.ext4 -F -I 128 $device_path
         ;;
       xfs)
-        sudo mkfs.xfs $device_path
+        sudo mkfs.xfs -f $device_path
         ;;
       btrfs)
-        sudo mkfs.btrfs $device_path
+        sudo mkfs.btrfs -f $device_path
         ;;
     esac
 
