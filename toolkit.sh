@@ -10,7 +10,6 @@ USER=$(whoami)
 LIB_SCRIPT="_lib.sh"
 
 mount_disk() {
-
   # Prompt for mount directory and device name
   _prompt_for_input_ MOUNT_DIR "Please enter mount directory full path" true
   _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
@@ -21,9 +20,9 @@ mount_disk() {
   _prompt_for_input_ FORMAT_RESPONSE "Do you want to format the disk (it will wipe out the disk), (Y|y|N|n)" true
 
   if [[ $FORMAT_RESPONSE == "Y" || $FORMAT_RESPONSE == "y" ]]; then
-
-    # Prompt for filesystem type
+    # Define valid filesystems
     valid_filesystems=("ext4" "xfs" "btrfs")
+    
     while true; do
       echo -e "Available filesystems: ${valid_filesystems[@]}"
       _prompt_for_input_ FILESYSTEM_TYPE "Please enter the filesystem type you want to use" true
@@ -49,10 +48,18 @@ mount_disk() {
         ;;
     esac
 
-    echo -e "${C_YELLOW}Completed disk format with $FILESYSTEM_TYPE${C_DEFAULT}"
+    echo -e "${C_YELLOW}Completed disk format${C_DEFAULT}"
   else
-    echo -e "${C_PURPLE}Skipped disk format. Warning: script might fail if disk is not in correct filesystem format.${C_DEFAULT}"
+    echo -e "${C_PURPLE}Skipped disk format${C_DEFAULT}"
   fi
+
+  # Detect filesystem type (whether formatted or not)
+  filesystem_type=$(sudo blkid -s TYPE -o value $device_path)
+  if [ -z "$filesystem_type" ]; then
+    echo -e "${C_RED}Could not detect filesystem type. Disk might not be formatted. Exiting...${C_DEFAULT}"
+    exit 1
+  fi
+  echo -e "${C_BLUE}Detected filesystem type: $filesystem_type${C_DEFAULT}"
 
   # Disk Mount
   uuid_for_fstab=$(sudo blkid -s UUID -o value $device_path)
@@ -74,8 +81,8 @@ mount_disk() {
     exit 1
   fi
 
-  # Add fstab entry
-  line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $FILESYSTEM_TYPE defaults 0 2"
+  # Add fstab entry with defaults
+  line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $filesystem_type defaults 0 2"
   echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
   echo -e "${C_BLUE}Added entry in fstab${C_DEFAULT}"
 
