@@ -131,7 +131,8 @@ rsync() {
   done
 
   # Perform parallel rsync copying
-  ls "$source_dir" | xargs -n1 -P"$parallel_count" -I% rsync -Pa "$source_dir/%" "$dest_dir/"
+  find "$source_dir" -maxdepth 1 -mindepth 1 -print0 | xargs -0 -n1 -P"$parallel_count" rsync -Pa {} "$dest_dir/"
+
 }
 
 add_ssh_key() {
