@@ -131,8 +131,7 @@ rsync() {
   done
 
   # Perform parallel rsync copying
-  find "$source_dir" -maxdepth 1 -mindepth 1 -print0 | \
-    xargs -0 -P"$parallel_count" -I{} rsync -Pa "{}" "$dest_dir/"
+  cd "$source_dir" && find . -type f -print0 | xargs -0 -P "$parallel_count" -I{} rsync -av --relative {} "$dest_dir/"; cd-
 
 }
 
