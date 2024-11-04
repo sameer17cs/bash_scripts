@@ -1,17 +1,24 @@
 #!/bin/bash
 
-# Define the new file descriptor limit
-NEW_LIMIT=500000
-NEW_FILE_MAX=1000000
+# Define limits
+NEW_LIMIT=100000        # Max open files per user
+NEW_FILE_MAX=200000     # System-wide max open files
+MAX_MAP_COUNT=131072    # Balanced setting for multi-service systems
 USER=$(whoami)
 
 # Function to update the system-wide file descriptor limit
 update_sysctl() {
-    echo "Updating /etc/sysctl.conf with fs.file-max=$NEW_FILE_MAX"
+    echo "Updating /etc/sysctl.conf with fs.file-max=$NEW_FILE_MAX and vm.max_map_count=$MAX_MAP_COUNT"
     if grep -q "fs.file-max" /etc/sysctl.conf; then
         sudo sed -i 's/fs.file-max.*/fs.file-max = '"$NEW_FILE_MAX"'/g' /etc/sysctl.conf
     else
         echo "fs.file-max = $NEW_FILE_MAX" | sudo tee -a /etc/sysctl.conf
+    fi
+    
+    if grep -q "vm.max_map_count" /etc/sysctl.conf; then
+        sudo sed -i 's/vm.max_map_count.*/vm.max_map_count = '"$MAX_MAP_COUNT"'/g' /etc/sysctl.conf
+    else
+        echo "vm.max_map_count = $MAX_MAP_COUNT" | sudo tee -a /etc/sysctl.conf
     fi
     sudo sysctl -p
 }
