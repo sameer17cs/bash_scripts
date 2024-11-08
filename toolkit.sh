@@ -215,7 +215,7 @@ main () {
     rsync
     add_ssh_key
     distribute_files
-    test
+    extract
   )
   
   # Check if function exists & run it, otherwise list options
