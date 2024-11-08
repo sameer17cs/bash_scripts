@@ -160,6 +160,16 @@ extract() {
     fi
   fi
 
+  # Check for unrar, install if not found (for better compatibility with .rar files)
+  if ! command -v unrar &> /dev/null; then
+    echo -e "${C_BLUE} unrar is not installed. Installing with apt ${C_DEFAULT}"
+    sudo apt update && sudo apt install -y unrar
+    if ! command -v unrar &> /dev/null; then
+      echo -e "${C_RED} Failed to install unrar. Please install it manually and try again.${C_DEFAULT}"
+      exit 1
+    fi
+  fi
+
   # Input and output directories: read from args or prompt
   INPUT_DIR="${1}"
   OUTPUT_DIR="${2}"
