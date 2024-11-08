@@ -220,10 +220,10 @@ extract() {
   echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
 }
 
-# Function: distribute_directory_contents
+# Function: dir_balance
 # Purpose: Split the contents of a directory into a specified number of smaller subdirectories of similar sizes.
 #          This function supports distributing files that are in the base directory (level 0) or its immediate subdirectories (level 1).
-distribute_directory_contents() {
+dir_balance() {
   # Read base directory
   read -p "Enter base directory full path: " PARENT_DIR
   if [ -z "$PARENT_DIR" ]; then
