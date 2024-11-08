@@ -453,11 +453,12 @@ main() {
     echo "---------------------------------------------------"
     
     #call the function
-    "$option_selected"
+    shift
+    "$option_selected" "$@"
   else
     echo -e "${C_RED}Unknown option $option_selected, please choose from below options${C_DEFAULT}"
     _print_array_ "${FUNCTIONS[@]}"
   fi
 }
 
-main $1
+main "$@"

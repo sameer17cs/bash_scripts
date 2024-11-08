@@ -223,7 +223,6 @@ main () {
     echo "---------------------------------------------------"
     
     #call the function
-    #sudo bash -c "$(declare -f $option_selected); source $LIB_SCRIPT; $option_selected"
     shift
     "$option_selected" "$@"
 
@@ -232,7 +231,5 @@ main () {
     _print_array_ "${FUNCTIONS[@]}"
   fi
 }
-
-
 
 main "$@"
