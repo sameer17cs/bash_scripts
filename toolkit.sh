@@ -152,10 +152,20 @@ add_ssh_key() {
 extract() {
   # Check for 7z, install if not found
   if ! command -v 7z &> /dev/null; then
-    echo -e "${C_BLUE} z (7-Zip) is not installed. Installing with apt ${C_DEFAULT}"
+    echo -e "${C_BLUE} 7-Zip (7z) is not installed. Installing with apt ${C_DEFAULT}"
     sudo apt update && sudo apt install -y p7zip-full
     if ! command -v 7z &> /dev/null; then
       echo -e "${C_RED} Failed to install 7z. Please install it manually and try again.${C_DEFAULT}"
+      exit 1
+    fi
+  fi
+
+  # Check for unrar, install if not found (for better compatibility with .rar files)
+  if ! command -v unrar &> /dev/null; then
+    echo -e "${C_BLUE} unrar is not installed. Installing with apt ${C_DEFAULT}"
+    sudo apt update && sudo apt install -y unrar
+    if ! command -v unrar &> /dev/null; then
+      echo -e "${C_RED} Failed to install unrar. Please install it manually and try again.${C_DEFAULT}"
       exit 1
     fi
   fi
@@ -191,7 +201,11 @@ extract() {
 
     # Extract archive contents into the designated output folder
     echo -e "${C_BLUE} Extracting ${archive} to ${output_folder}...${C_DEFAULT}"
-    7z x -o"${output_folder}" "${archive}" -y
+    if [[ "${archive}" == *.rar ]]; then
+      unrar x "${archive}" "${output_folder}"
+    else
+      7z x -o"${output_folder}" "${archive}" -y
+    fi
 
     # Clean up unnecessary extensions in output folder names
     if [[ "${output_folder}" == *".zip"* || "${output_folder}" == *".rar"* || "${output_folder}" == *".7z"* || "${output_folder}" == *".tar"* ]]; then
