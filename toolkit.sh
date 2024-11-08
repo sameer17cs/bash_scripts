@@ -205,7 +205,7 @@ extract() {
 
 # Purpose: Split the contents of a directory into smaller subdirectories, of similar sizes
 # Currently it only supports distributing files which are in parent directory or files in subdirectories (level 0 and 1)
-distribute_directory_contents() {
+dir_balance() {
   # Read base directory
   read -p "Enter base directory full path: " PARENT_DIR
   if [ -z "$PARENT_DIR" ]; then
@@ -282,8 +282,8 @@ main () {
     resize_disk
     rsync
     add_ssh_key
-    distribute_files
     extract
+    dir_balance
   )
   
   # Check if function exists & run it, otherwise list options
