@@ -219,6 +219,76 @@ extract() {
   echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
 }
 
+# Purpose: Split the contents of a directory into smaller subdirectories, of similar sizes
+# Currently it only supports distributing files which are in parent directory or files in subdirectories (level 0 and 1)
+distribute_directory_contents() {
+  # Read base directory
+  read -p "Enter base directory full path: " PARENT_DIR
+  if [ -z "$PARENT_DIR" ]; then
+    echo -e "${C_RED}Invalid directory${C_DEFAULT}"
+    exit 1
+  fi
+
+  # Read number of subdirectories to create
+  read -p "Enter number of subdirectories to create (default: 1): " NUM_SUB_DIRS
+  NUM_SUB_DIRS=${NUM_SUB_DIRS:-1}
+
+  # Constants
+  SUB_DIRECTORY_PREFIX_="subdir_"
+
+  # Helper function to find the subdirectory with the smallest size
+  get_smallest_directory() {
+    local smallest_size=0
+    local smallest_dir=""
+    for i in $(seq 1 $NUM_SUB_DIRS); do
+      local curr_dir="$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i"
+      local curr_size=$(du -s "$curr_dir" | awk '{print $1}')
+      if [ $i -eq 1 ] || [ "$curr_size" -lt "$smallest_size" ]; then
+        smallest_size=$curr_size
+        smallest_dir=$curr_dir
+      fi
+    done
+    echo "$smallest_dir"
+    return
+  }
+
+  # Create specified number of subdirectories if they don't exist
+  for i in $(seq 1 "$NUM_SUB_DIRS"); do
+    local sub_dir="$PARENT_DIR/$SUB_DIRECTORY_PREFIX_$i"
+    if [ ! -d "$sub_dir" ]; then
+      mkdir "$sub_dir"
+    fi
+  done
+
+  # Temporary directory to hold files for distribution
+  local temp_dir="$PARENT_DIR/temp"
+  mkdir -p "$temp_dir"
+
+  # Move all files from the parent directory and its subdirectories to the temporary directory
+  find "$PARENT_DIR" -type f -exec bash -c '
+    src_file="$0"
+    dest_file="'$temp_dir'/$(basename "$0")"
+    if [ "$src_file" != "$dest_file" ]; then
+      mv "$src_file" "$dest_file"
+    fi' {} \;
+
+  # Distribute files from the temporary directory to the subdirectories
+  while [ "$(ls -A "$temp_dir" | wc -l)" -gt 0 ]; do
+    smallest_dir=$(get_smallest_directory)
+    file=$(ls -A "$temp_dir" | head -n 1)
+    echo "Moving $file ---> $smallest_dir"
+    mv "$temp_dir/$file" "$smallest_dir"
+  done
+
+  # Remove the temporary directory
+  rm -rf "$temp_dir"
+
+  # Remove any empty subdirectories left in the parent directory
+  find "$PARENT_DIR" -type d -empty -delete
+
+  echo -e "${C_GREEN}Distribution completed successfully.${C_DEFAULT}"
+}
+
 main () {
   local option_selected=$1
   source $LIB_SCRIPT

@@ -24,7 +24,3 @@
 ## AWS Firewall: 
  - script: aws_firewall.sh `security group id` `security group rule id` `port number`
  - Description: Add your dynamic ip to security group in aws
-
-## Directory Distribution
- - script: directory_split.sh
- - Description: Allows you split a large directory into smaller directories by size
