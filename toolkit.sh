@@ -9,6 +9,11 @@ set -e
 USER=$(whoami)
 LIB_SCRIPT="_lib.sh"
 
+# Function: mount_disk
+# Purpose: This function mounts a disk to a specified directory. 
+#          It prompts the user to format the disk if needed, creates a mount point, mounts the device, 
+#          and updates the fstab file for persistent mounting.
+# 
 mount_disk() {
   # Prompt for mount directory and device name
   _prompt_for_input_ MOUNT_DIR "Please enter mount directory full path" true
@@ -95,6 +100,9 @@ mount_disk() {
   sudo mount -a
 }
 
+# Function: resize_disk
+# Purpose: This function resizes the filesystem on a specified disk device.
+#          It prompts the user for the device name, then uses `resize2fs` to resize the filesystem to utilize all available space on the disk.
 resize_disk() {
   _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
   device_path="/dev/$DEVICE_NAME"
@@ -104,6 +112,10 @@ resize_disk() {
   echo -e "${C_GREEN} Filesystem resize completed on $device_path.${C_DEFAULT}"
 }
 
+# Function: rsync
+# Purpose: This function performs parallel file synchronization from a source directory to a destination directory.
+#          It prompts the user for the source and destination directories, validates them, 
+#          and then uses `rsync` with parallel threads to optimize the file transfer.
 rsync() {
   # Prompt for input values
   _prompt_for_input_ source_dir "Enter the source directory" true
@@ -135,6 +147,9 @@ rsync() {
 
 }
 
+# Function: add_ssh_key
+# Purpose: This function adds an SSH private key to the SSH agent and sets appropriate file permissions.
+#          It prompts the user for the key's file path, validates its existence, and then adds it to the SSH agent.
 add_ssh_key() {
   _prompt_for_input_ SSH_KEY_PATH "Please enter the full path of your SSH private key" true
   
@@ -149,6 +164,9 @@ add_ssh_key() {
   echo -e "${C_GREEN} SSH key added and permissions set.${C_DEFAULT}"
 }
 
+# Function: extract
+# Purpose: This function extracts various archive file types (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
+#          It checks for the presence of the 'unar' tool, installs it if needed, and handles extraction for each supported archive file.
 extract() {
   # Check if 'unar' is installed; if not, install it based on Linux package manager
   if ! command -v unar &> /dev/null; then
@@ -202,10 +220,10 @@ extract() {
   echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
 }
 
-
-# Purpose: Split the contents of a directory into smaller subdirectories, of similar sizes
-# Currently it only supports distributing files which are in parent directory or files in subdirectories (level 0 and 1)
-dir_balance() {
+# Function: distribute_directory_contents
+# Purpose: Split the contents of a directory into a specified number of smaller subdirectories of similar sizes.
+#          This function supports distributing files that are in the base directory (level 0) or its immediate subdirectories (level 1).
+distribute_directory_contents() {
   # Read base directory
   read -p "Enter base directory full path: " PARENT_DIR
   if [ -z "$PARENT_DIR" ]; then
