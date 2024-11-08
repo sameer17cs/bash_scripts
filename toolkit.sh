@@ -149,8 +149,64 @@ add_ssh_key() {
   echo -e "${C_GREEN} SSH key added and permissions set.${C_DEFAULT}"
 }
 
+extract() {
+  # Check for 7z, install if not found
+  if ! command -v 7z &> /dev/null; then
+    echo -e "${C_BLUE} z (7-Zip) is not installed. Installing with apt ${C_DEFAULT}"
+    sudo apt update && sudo apt install -y p7zip-full
+    if ! command -v 7z &> /dev/null; then
+      echo -e "${C_RED} Failed to install 7z. Please install it manually and try again.${C_DEFAULT}"
+      exit 1
+    fi
+  fi
+
+  # Input and output directories: read from args or prompt
+  INPUT_DIR="${1}"
+  OUTPUT_DIR="${2}"
+  if [[ -z "$INPUT_DIR" ]]; then
+    read -rp "Please enter the input directory: " INPUT_DIR
+  fi
+  if [[ -z "$OUTPUT_DIR" ]]; then
+    read -rp "Please enter the output directory: " OUTPUT_DIR
+  fi
+
+  # Ensure output directory exists
+  mkdir -p "${OUTPUT_DIR}"
+
+  # Find and process all archive files in the input directory
+  find "${INPUT_DIR}" -type f \( -iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2" \) | while IFS= read -r archive; do
+    # Generate output folder based on the archive path, stripping extension
+    relative_path="${archive#${INPUT_DIR}/}"
+    base_name="${relative_path%.*}"
+    output_folder="${OUTPUT_DIR}/${base_name}"
+
+    # Handle special cases for double extensions like .tar.gz or .tar.bz2
+    if [[ "${archive}" == *.tar.gz || "${archive}" == *.tar.bz2 ]]; then
+      base_name="${relative_path%.*.*}"
+      output_folder="${OUTPUT_DIR}/${base_name}"
+    fi
+
+    # Create target output directory
+    mkdir -p "${output_folder}"
+
+    # Extract archive contents into the designated output folder
+    echo -e "${C_BLUE} Extracting ${archive} to ${output_folder}...${C_DEFAULT}"
+    7z x -o"${output_folder}" "${archive}" -y
+
+    # Clean up unnecessary extensions in output folder names
+    if [[ "${output_folder}" == *".zip"* || "${output_folder}" == *".rar"* || "${output_folder}" == *".7z"* || "${output_folder}" == *".tar"* ]]; then
+      clean_name="${output_folder%.*}"
+      mv "${output_folder}" "${clean_name}"
+    fi
+  done
+
+  echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
+}
+
+
 main () {
   local option_selected=$1
+  shift
   source $LIB_SCRIPT
 
   declare -a FUNCTIONS=(
@@ -159,6 +215,7 @@ main () {
     rsync
     add_ssh_key
     distribute_files
+    test
   )
   
   # Check if function exists & run it, otherwise list options
@@ -170,7 +227,7 @@ main () {
     #call the function
     #sudo bash -c "$(declare -f $option_selected); source $LIB_SCRIPT; $option_selected"
 
-    "$option_selected"
+    "$option_selected" "$@"
 
   else
     echo -e "${C_RED}Unknown option $option_selected, please choose from below options${C_DEFAULT}"
@@ -178,4 +235,6 @@ main () {
   fi
 }
 
-main $1
+
+
+main "$@"
