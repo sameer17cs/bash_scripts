@@ -203,10 +203,8 @@ extract() {
   echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
 }
 
-
 main () {
   local option_selected=$1
-  shift
   source $LIB_SCRIPT
 
   declare -a FUNCTIONS=(
@@ -226,7 +224,7 @@ main () {
     
     #call the function
     #sudo bash -c "$(declare -f $option_selected); source $LIB_SCRIPT; $option_selected"
-
+    shift
     "$option_selected" "$@"
 
   else
