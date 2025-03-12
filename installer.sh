@@ -227,107 +227,154 @@ redis () {
   echo -e "${C_BLUE}Redis version: $REDIS_VERSION${C_DEFAULT}"
 }
 
-elasticsearch() {
-
-  local container_name="elasticsearch"
+elastic_kibana() {
+  ############################
+  # Install Elasticsearch without password (security disabled)
+  ############################
+  local elastic_container="elasticsearch"
   local default_version="8.14.0"
-  local username="elastic"
+  local elastic_username="elastic"
 
-  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: 8.14.0)" false
-  
-  _prompt_for_input_ DATADIR "Enter Elasticsearch data directory full path" true
-  ensure_directory_exists $DATADIR
-  
-  _prompt_for_input_ PWD "Enter password for the Elasticsearch root user (username: $username)" true
-  
+  _prompt_for_input_ VERSION "Enter Elasticsearch version (default: $default_version)" false
+  _prompt_for_input_ ES_DATADIR "Enter Elasticsearch data directory full path" true
+  ensure_directory_exists "$ES_DATADIR"
+
   _prompt_for_input_ ELASTIC_MIN_MEMORY "Enter minimum memory (MB) for Elasticsearch" true
   _prompt_for_input_ ELASTIC_MAX_MEMORY "Enter maximum memory (MB) for Elasticsearch" true
 
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-  -p 9200:9200 -p 9300:9300 \
-  --volume $DATADIR:/usr/share/elasticsearch/data \
-  --env "bootstrap.memory_lock=true" \
-  --env "discovery.type=single-node" \
-  --env "ELASTIC_PASSWORD=$PWD" \
-  --env "xpack.security.enabled=true" \
-  --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
-  --ulimit memlock=-1:-1 \
-  --name $container_name docker.elastic.co/elasticsearch/elasticsearch:${VERSION:-$default_version}
+    -p 9200:9200 -p 9300:9300 \
+    --volume "$ES_DATADIR":/usr/share/elasticsearch/data \
+    --env "bootstrap.memory_lock=true" \
+    --env "discovery.type=single-node" \
+    --env "xpack.security.enabled=false" \
+    --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
+    --ulimit memlock=-1:-1 \
+    --name $elastic_container docker.elastic.co/elasticsearch/elasticsearch:${VERSION:-$default_version}
 
-  # Wait for Elasticsearch to be ready
   echo "Waiting for Elasticsearch to be available..."
-  until curl -s -o /dev/null -w "%{http_code}" -u elastic:$PWD http://127.0.0.1:9200 | grep -q "200"; do
+  until curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9200 | grep -q "200"; do
     echo "Elasticsearch is not ready yet. Retrying in 30 seconds..."
     sleep 30
   done
 
-  echo -e "${C_GREEN}Elasticsearch setup complete.${C_DEFAULT}"
-  echo -e "${C_BLUE}Elasticsearch username: $username${C_DEFAULT}"
-  echo -e "${C_BLUE}Elasticsearch password: $PWD${C_DEFAULT}"
-}
+  echo -e "Elasticsearch setup complete (security disabled)."
 
-kibana() {
-  local container_name="kibana"
-  local default_elastic_host="http://127.0.0.1:9200"
-  local default_kibana_version="8.14.0"
+  ############################
+  # Ask user if they want to disable or lower the disk watermark
+  ############################
+  _prompt_for_input_ DISK_WATERMARK_OPTION "Disable or lower the disk watermark? (yes/no) (default: no)" false
+  DISK_WATERMARK_OPTION="${DISK_WATERMARK_OPTION:-no}"
 
-  _prompt_for_input_ ELASTIC_HOST "Enter Elasticsearch host URL (default: $default_elastic_host)" false
-  ELASTIC_HOST="${ELASTIC_HOST:-$default_elastic_host}"
-
-  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
-
-  local kibana_system_user="kibana_system"
-  local kibana_system_password=$(openssl rand -base64 12)
-  local temp_file="/tmp/response.json"
-
-  echo -e "${C_GREEN}Setting up password for Elasticsearch user '${kibana_system_user}'...${C_DEFAULT}"
-
-  # Get Elasticsearch root user password
-  while true; do
-    _prompt_for_input_ "ELASTIC_ROOT_PASSWORD" "Enter password for the Elasticsearch root user (elastic)" true
-
-    # Test the root user password
-    if curl -s -o /dev/null -w "%{http_code}" -u "elastic:$ELASTIC_ROOT_PASSWORD" "$ELASTIC_HOST" | grep -q "200"; then
-      break
-    else
-      echo -e "${C_RED}Invalid Elasticsearch root user password. Please try again...${C_DEFAULT}"
-      echo
-    fi
-  done
-
-  # Update password for kibana_system user
-  payload="{\"password\":\"$kibana_system_password\"}"
-  response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/$kibana_system_user/_password" -H "Content-Type: application/json" -u "elastic:$ELASTIC_ROOT_PASSWORD" -d "$payload")
-  if [[ "$response" == "200" ]]; then
-    echo -e "${C_BLUE}Password for user '$kibana_system_user' updated successfully.${C_DEFAULT}"
+  if [[ "$DISK_WATERMARK_OPTION" =~ ^(yes|y|YES|Y)$ ]]; then
+    echo "Disabling disk-based shard allocation checks (DEV/TEST ONLY)..."
+    curl -X PUT "http://127.0.0.1:9200/_cluster/settings" \
+         -H 'Content-Type: application/json' \
+         -d '{
+           "transient": {
+             "cluster.routing.allocation.disk.threshold_enabled": "false"
+           }
+         }'
+    # OR if you prefer lowering them to certain GB thresholds, you could comment out
+    # the above curl and uncomment the snippet below:
+    #
+    # curl -X PUT "http://127.0.0.1:9200/_cluster/settings" \
+    #      -H 'Content-Type: application/json' \
+    #      -d '{
+    #        "transient": {
+    #          "cluster.routing.allocation.disk.watermark.low": "5gb",
+    #          "cluster.routing.allocation.disk.watermark.high": "2gb",
+    #          "cluster.routing.allocation.disk.watermark.flood_stage": "1gb"
+    #        }
+    #      }'
+    echo "\n"
   else
-    echo -e "${C_RED}Failed to update password for user '$kibana_system_user'. Response:${C_DEFAULT}"
-    cat $temp_file
-    echo
-    rm $temp_file
-    return 1
+    echo "Skipping changes to disk watermark."
   fi
 
-  rm $temp_file
+  ############################
+  # Install Kibana without password (security disabled)
+  ############################
+  local kibana_container="kibana"
+  local default_kibana_version="8.14.0"
+  local ELASTIC_HOST="http://host.docker.internal:9200"  # Or http://127.0.0.1:9200 if you're on Linux
 
-  # Data directory for Kibana
-  _prompt_for_input_ DATADIR "Enter Kibana data directory full path" true
-  ensure_directory_exists "$DATADIR"
+  _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
+  _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
+  ensure_directory_exists "$KIBANA_DATADIR"
 
-  # Create Kibana container
   docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
-  --network host \
-  -p 5601:5601 \
-  --volume $DATADIR:/usr/share/kibana/data \
-  --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
-  --env "ELASTICSEARCH_USERNAME=$kibana_system_user" \
-  --env "ELASTICSEARCH_PASSWORD=$kibana_system_password" \
-  --env "XPACK_SECURITY_ENABLED=true" \
-  --env "XPACK_SECURITY_SESSION_IDLETIMEOUT=1h" \
-  --env "XPACK_SECURITY_SESSION_LIFETIME=24h" \
-  --name $container_name docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
+    -p 5601:5601 \
+    --volume "$KIBANA_DATADIR":/usr/share/kibana/data \
+    --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
+    --env "XPACK_SECURITY_ENABLED=false" \
+    --name $kibana_container docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
 
-  echo -e "${C_GREEN}Kibana setup complete, use elastic username and password to login ${C_DEFAULT}"
+  echo -e "Kibana setup complete (security disabled)."
+
+  ############################
+  # Optionally Enable Security and Set Passwords
+  ############################
+  _prompt_for_input_ SETUP_PASSWORD_OPTION "Would you like to set up passwords for elastic and kibana_system now? (yes/no)" true
+  if [[ "$SETUP_PASSWORD_OPTION" =~ ^(yes|y|YES|Y)$ ]]; then
+    _prompt_for_input_ NEW_ELASTIC_PWD "Enter new password for elastic user" true
+    _prompt_for_input_ NEW_KIBANA_PWD "Enter new password for kibana_system user" true
+
+    echo "Stopping Kibana and Elasticsearch containers to enable security..."
+    docker rm -f $kibana_container
+    docker rm -f $elastic_container
+
+    echo "Restarting Elasticsearch with security enabled..."
+    docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+      -p 9200:9200 -p 9300:9300 \
+      --volume "$ES_DATADIR":/usr/share/elasticsearch/data \
+      --env "bootstrap.memory_lock=true" \
+      --env "discovery.type=single-node" \
+      --env "xpack.security.enabled=true" \
+      --env "ELASTIC_PASSWORD=$NEW_ELASTIC_PWD" \
+      --env "ES_JAVA_OPTS=-Xms${ELASTIC_MIN_MEMORY}m -Xmx${ELASTIC_MAX_MEMORY}m" \
+      --ulimit memlock=-1:-1 \
+      --name $elastic_container docker.elastic.co/elasticsearch/elasticsearch:${VERSION:-$default_version}
+
+    echo "Waiting for Elasticsearch with security to be available..."
+    until curl -s -o /dev/null -w "%{http_code}" -u $elastic_username:$NEW_ELASTIC_PWD $ELASTIC_HOST | grep -q "200"; do
+      echo "Elasticsearch is not ready yet. Retrying in 30 seconds..."
+      sleep 30
+    done
+
+    echo "Elasticsearch restarted with security enabled."
+
+    echo "Updating kibana_system password..."
+    payload="{\"password\":\"$NEW_KIBANA_PWD\"}"
+    temp_file="/tmp/response.json"
+    response=$(curl -s -w "%{http_code}" -o $temp_file -X POST "$ELASTIC_HOST/_security/user/kibana_system/_password" \
+      -H "Content-Type: application/json" -u "$elastic_username:$NEW_ELASTIC_PWD" -d "$payload")
+    if [[ "$response" == "200" ]]; then
+      echo "kibana_system password updated successfully."
+    else
+      echo "Failed to update kibana_system password. Response:"
+      cat $temp_file
+      rm $temp_file
+      return 1
+    fi
+    rm $temp_file
+
+    echo "Restarting Kibana with security enabled..."
+    docker run --detach --log-opt max-size=50m --log-opt max-file=5 --restart unless-stopped \
+      --network host \
+      -p 5601:5601 \
+      --volume "$KIBANA_DATADIR":/usr/share/kibana/data \
+      --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
+      --env "ELASTICSEARCH_USERNAME=kibana_system" \
+      --env "ELASTICSEARCH_PASSWORD=$NEW_KIBANA_PWD" \
+      --env "XPACK_SECURITY_ENABLED=true" \
+      --name $kibana_container docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
+
+    echo "Password setup complete. Use the elastic user with the new password to log in."
+  else
+    echo "Password setup skipped. Installation complete."
+    exit 0
+  fi
 }
 
 neo4j () {
@@ -441,6 +488,7 @@ main() {
     redis
     elasticsearch
     kibana
+    elastic_kibana
     neo4j
     redash
     metabase
