@@ -486,8 +486,6 @@ main() {
     mongodb
     mysql
     redis
-    elasticsearch
-    kibana
     elastic_kibana
     neo4j
     redash
