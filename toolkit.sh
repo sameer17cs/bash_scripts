@@ -171,26 +171,80 @@ extract() {
   # Define archive patterns variable for reuse as an array
   ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
 
-  # Check if 'unar' is installed; if not, install it based on Linux package manager
-  if ! command -v unar &> /dev/null; then
-    echo -e "${C_BLUE}unar is not installed. Installing...${C_DEFAULT}"
-    
-    # Detect package manager and install unar accordingly
-    if command -v apt &> /dev/null; then
-      sudo apt update && sudo apt install -y unar
-    elif command -v yum &> /dev/null; then
-      sudo yum install -y unar
+  # Helper function to extract an archive and avoid double-nesting
+  smart_extract_archive() {
+    local archive_path="$1"
+    local dest_dir="$2"
+    local base_name
+    base_name="$(basename "${archive_path%.*}")"
+    mkdir -p "$dest_dir"
+    local tmp_extract_dir
+    tmp_extract_dir=$(mktemp -d)
+    echo -e "${C_BLUE}Extracting $archive_path to temporary directory $tmp_extract_dir...${C_DEFAULT}"
+    unar -o "$tmp_extract_dir" "$archive_path" || echo -e "${C_YELLOW}Warning: Some files in $archive_path could not be extracted.${C_DEFAULT}"
+    # Check for single top-level directory with same name as archive
+    local top_level_items=("$tmp_extract_dir"/*)
+    if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
+      local single_dir_name
+      single_dir_name="$(basename "${top_level_items[0]}")"
+      if [ "$single_dir_name" = "$base_name" ]; then
+        mv "${top_level_items[0]}"/* "$dest_dir" 2>/dev/null || true
+        shopt -s dotglob
+        mv "${top_level_items[0]}"/* "$dest_dir" 2>/dev/null || true
+        shopt -u dotglob
+        rmdir "${top_level_items[0]}"
+      else
+        mv "$tmp_extract_dir"/* "$dest_dir" 2>/dev/null || true
+      fi
     else
-      echo -e "${C_RED}Unsupported package manager. Please install 'unar' manually.${C_DEFAULT}"
-      exit 1
+      mv "$tmp_extract_dir"/* "$dest_dir" 2>/dev/null || true
     fi
+    rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
+  }
 
-    # Re-check if 'unar' is available after installation
+  # Helper function for recursive extraction
+  extract_archives_recursive() {
+    local base_dir="$1"
+    while true; do
+      local archives=()
+      while IFS= read -r archive; do
+        archives+=("$archive")
+      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \))
+      [ ${#archives[@]} -eq 0 ] && break
+      for archive in "${archives[@]}"; do
+        local archive_dir
+        archive_dir="${archive%.*}"
+        smart_extract_archive "$archive" "$archive_dir"
+        rm -f "$archive"
+      done
+    done
+  }
+
+  # Helper function to install dependencies
+  install_dependencies() {
+    # Check if 'unar' is installed; if not, install it based on Linux package manager
     if ! command -v unar &> /dev/null; then
-      echo -e "${C_RED}Failed to install unar. Please install it manually and try again.${C_DEFAULT}"
-      exit 1
+      echo -e "${C_BLUE}unar is not installed. Installing...${C_DEFAULT}"
+      # Detect package manager and install unar accordingly
+      if command -v apt &> /dev/null; then
+        sudo apt update && sudo apt install -y unar
+      elif command -v yum &> /dev/null; then
+        sudo yum install -y unar
+      else
+        echo -e "${C_RED}Unsupported package manager. Please install 'unar' manually.${C_DEFAULT}"
+        exit 1
+      fi
+      # Re-check if 'unar' is available after installation
+      if ! command -v unar &> /dev/null; then
+        echo -e "${C_RED}Failed to install unar. Please install it manually and try again.${C_DEFAULT}"
+        exit 1
+      fi
     fi
-  fi
+  }
+
+  ####main logic flow
+
+  install_dependencies
 
   INPUT_DIR="${1}"
   OUTPUT_DIR="${2}"
@@ -206,29 +260,7 @@ extract() {
   find "$INPUT_DIR" -maxdepth 1 -type f \( "${ARCHIVE_PATTERNS[@]}" \) | while IFS= read -r archive; do
     base_name="$(basename "${archive}" | sed 's/\.[^.]*$//')"
     output_folder="$OUTPUT_DIR/$base_name"
-    mkdir -p "$output_folder"
-    tmp_extract_dir=$(mktemp -d)
-    echo -e "${C_BLUE}Extracting $archive to temporary directory $tmp_extract_dir...${C_DEFAULT}"
-    unar -o "$tmp_extract_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
-    # Check for single top-level directory with same name as archive
-    top_level_items=("$tmp_extract_dir"/*)
-    if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
-      single_dir_name="$(basename "${top_level_items[0]}")"
-      if [ "$single_dir_name" = "$base_name" ]; then
-        # Move contents of the single directory up one level
-        mv "${top_level_items[0]}"/* "$output_folder" 2>/dev/null || true
-        # If there are hidden files, move them too
-        shopt -s dotglob
-        mv "${top_level_items[0]}"/* "$output_folder" 2>/dev/null || true
-        shopt -u dotglob
-        rmdir "${top_level_items[0]}"
-      else
-        mv "$tmp_extract_dir"/* "$output_folder" 2>/dev/null || true
-      fi
-    else
-      mv "$tmp_extract_dir"/* "$output_folder" 2>/dev/null || true
-    fi
-    rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
+    smart_extract_archive "$archive" "$output_folder"
   done
 
   # 2. Copy all other non-archive files and directories from input to output, preserving structure
@@ -241,44 +273,7 @@ extract() {
     cp -r "$dir" "$2/$base"
   ' _ '{}' "$OUTPUT_DIR" \;
 
-  # 3. Recursively extract any archives found in the output directory, deleting each archive after extraction
-  extract_archives_recursive() {
-    local base_dir="$1"
-    while true; do
-      local archives=()
-      while IFS= read -r archive; do
-        archives+=("$archive")
-      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \))
-      [ ${#archives[@]} -eq 0 ] && break
-      for archive in "${archives[@]}"; do
-        archive_dir="${archive%.*}"
-        mkdir -p "$archive_dir"
-        tmp_extract_dir=$(mktemp -d)
-        echo -e "${C_BLUE}Extracting $archive to temporary directory $tmp_extract_dir...${C_DEFAULT}"
-        unar -o "$tmp_extract_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
-        # Check for single top-level directory with same name as archive
-        top_level_items=("$tmp_extract_dir"/*)
-        if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
-          single_dir_name="$(basename "${top_level_items[0]}")"
-          base_name="$(basename "$archive_dir")"
-          if [ "$single_dir_name" = "$base_name" ]; then
-            mv "${top_level_items[0]}"/* "$archive_dir" 2>/dev/null || true
-            shopt -s dotglob
-            mv "${top_level_items[0]}"/* "$archive_dir" 2>/dev/null || true
-            shopt -u dotglob
-            rmdir "${top_level_items[0]}"
-          else
-            mv "$tmp_extract_dir"/* "$archive_dir" 2>/dev/null || true
-          fi
-        else
-          mv "$tmp_extract_dir"/* "$archive_dir" 2>/dev/null || true
-        fi
-        rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
-        rm -f "$archive"
-      done
-    done
-  }
-
+  # 3. Recursively extract any archives found in the output directory
   extract_archives_recursive "$OUTPUT_DIR"
 
   # Cleanup: remove any .extracted_marker files left by unar
