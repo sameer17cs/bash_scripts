@@ -165,59 +165,132 @@ add_ssh_key() {
 }
 
 # Function: extract
-# Purpose: This function extracts various archive file types (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
-#          It checks for the presence of the 'unar' tool, installs it if needed, and handles extraction for each supported archive file.
+# Purpose: Recursively extract all supported archive files (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory, preserving folder hierarchy and ensuring no archives remain in the output. Handles nested archives, avoids double-nesting, and cleans up marker files. Installs 'unar' if not present.
 extract() {
-  # Check if 'unar' is installed; if not, install it based on Linux package manager
-  if ! command -v unar &> /dev/null; then
-    echo -e "${C_BLUE}unar is not installed. Installing...${C_DEFAULT}"
-    
-    # Detect package manager and install unar accordingly
-    if command -v apt &> /dev/null; then
-      sudo apt update && sudo apt install -y unar
-    elif command -v yum &> /dev/null; then
-      sudo yum install -y unar
+  # Define archive patterns variable for reuse as an array
+  ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
+
+  # Helper function to extract an archive and avoid double-nesting
+  # Arguments:
+  #   $1: Path to the archive file
+  #   $2: Destination directory for extraction
+  smart_extract_archive() {
+    local archive_path="$1"
+    local dest_dir="$2"
+    local base_name
+    base_name="$(basename "${archive_path%.*}")"
+    mkdir -p "$dest_dir"  # Ensure destination directory exists
+    local tmp_extract_dir
+    tmp_extract_dir=$(mktemp -d)  # Create a temporary directory for extraction
+    echo -e "${C_BLUE}Extracting $archive_path to temporary directory $tmp_extract_dir...${C_DEFAULT}"
+    unar -o "$tmp_extract_dir" "$archive_path" || echo -e "${C_YELLOW}Warning: Some files in $archive_path could not be extracted.${C_DEFAULT}"
+    # Check for single top-level directory with same name as archive
+    local top_level_items=("$tmp_extract_dir"/*)
+    if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
+      local single_dir_name
+      single_dir_name="$(basename "${top_level_items[0]}")"
+      if [ "$single_dir_name" = "$base_name" ]; then
+        # Move contents of the single directory up one level to avoid double-nesting
+        mv "${top_level_items[0]}"/* "$dest_dir" 2>/dev/null || true
+        shopt -s dotglob
+        mv "${top_level_items[0]}"/* "$dest_dir" 2>/dev/null || true
+        shopt -u dotglob
+        rmdir "${top_level_items[0]}"
+      else
+        # Move all extracted files/folders to destination
+        mv "$tmp_extract_dir"/* "$dest_dir" 2>/dev/null || true
+      fi
     else
-      echo -e "${C_RED}Unsupported package manager. Please install 'unar' manually.${C_DEFAULT}"
-      exit 1
+      # Move all extracted files/folders to destination
+      mv "$tmp_extract_dir"/* "$dest_dir" 2>/dev/null || true
     fi
+    # Remove the temporary extraction directory
+    rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
+  }
 
-    # Re-check if 'unar' is available after installation
+  # Helper function for recursive extraction of all nested archives
+  # Arguments:
+  #   $1: Base directory to search for archives
+  extract_archives_recursive() {
+    local base_dir="$1"
+    while true; do
+      local archives=()
+      # Find all archives in base_dir and store in an array
+      while IFS= read -r archive; do
+        archives+=("$archive")
+      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \))
+      [ ${#archives[@]} -eq 0 ] && break  # Exit loop if no archives found
+      for archive in "${archives[@]}"; do
+        local archive_dir
+        archive_dir="${archive%.*}"
+        # Extract archive and remove it
+        smart_extract_archive "$archive" "$archive_dir"
+        rm -f "$archive"
+      done
+    done
+  }
+
+  # Helper function to install dependencies (unar)
+  install_dependencies() {
+    # Check if 'unar' is installed; if not, install it based on Linux package manager
     if ! command -v unar &> /dev/null; then
-      echo -e "${C_RED}Failed to install unar. Please install it manually and try again.${C_DEFAULT}"
-      exit 1
+      echo -e "${C_BLUE}unar is not installed. Installing...${C_DEFAULT}"
+      # Detect package manager and install unar accordingly
+      if command -v apt &> /dev/null; then
+        sudo apt update && sudo apt install -y unar
+      elif command -v yum &> /dev/null; then
+        sudo yum install -y unar
+      else
+        echo -e "${C_RED}Unsupported package manager. Please install 'unar' manually.${C_DEFAULT}"
+        exit 1
+      fi
+      # Re-check if 'unar' is available after installation
+      if ! command -v unar &> /dev/null; then
+        echo -e "${C_RED}Failed to install unar. Please install it manually and try again.${C_DEFAULT}"
+        exit 1
+      fi
     fi
-  fi
+  }
 
-  # Input and output directories: read from args or prompt
+  #### main logic flow
+
+  install_dependencies  # Ensure unar is installed
+
   INPUT_DIR="${1}"
   OUTPUT_DIR="${2}"
+  # Prompt for input/output directories if not provided as arguments
   if [[ -z "$INPUT_DIR" ]]; then
     read -rp "Please enter the input directory: " INPUT_DIR
   fi
   if [[ -z "$OUTPUT_DIR" ]]; then
     read -rp "Please enter the output directory: " OUTPUT_DIR
   fi
+  mkdir -p "${OUTPUT_DIR}"  # Ensure output directory exists
 
-  # Ensure output directory exists
-  mkdir -p "${OUTPUT_DIR}"
-
-  # Find and process all archive files in the input directory
-  find "${INPUT_DIR}" -type f \( -iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2" \) | while IFS= read -r archive; do
-      # Generate output folder based on the archive path
-      relative_path="${archive#${INPUT_DIR}/}"
-      base_name="${relative_path%.*}"
-      output_folder="${OUTPUT_DIR}/${base_name}"
-
-      # Create target output directory
-      mkdir -p "${output_folder}"
-
-      # Extract archive contents into the designated output folder using unar
-      echo -e "${C_BLUE}Extracting ${archive} to ${output_folder}...${C_DEFAULT}"
-      unar -o "${output_folder}" "${archive}" || echo -e "${C_YELLOW}Warning: Some files in ${archive} could not be extracted.${C_DEFAULT}"
+  # 1. Extract all archives in the top level of the input directory into the output directory
+  find "$INPUT_DIR" -maxdepth 1 -type f \( "${ARCHIVE_PATTERNS[@]}" \) | while IFS= read -r archive; do
+    base_name="$(basename "${archive}" | sed 's/\.[^.]*$//')"
+    output_folder="$OUTPUT_DIR/$base_name"
+    smart_extract_archive "$archive" "$output_folder"
   done
 
-  echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
+  # 2. Copy all other non-archive files and directories from input to output, preserving structure
+  # Copy non-archive files at the top level
+  find "$INPUT_DIR" -maxdepth 1 -type f ! \( "${ARCHIVE_PATTERNS[@]}" \) -exec cp '{}' "$OUTPUT_DIR/" \;
+  # Copy non-archive directories (excluding . and ..)
+  find "$INPUT_DIR" -mindepth 1 -maxdepth 1 -type d -exec bash -c '
+    dir="$1"
+    base="$(basename "$dir")"
+    cp -r "$dir" "$2/$base"
+  ' _ '{}' "$OUTPUT_DIR" \;
+
+  # 3. Recursively extract any archives found in the output directory, deleting each archive after extraction
+  extract_archives_recursive "$OUTPUT_DIR"
+
+  # Cleanup: remove any .extracted_marker files left by unar
+  find "$OUTPUT_DIR" -name '*.extracted_marker' -delete
+
+  echo -e "${C_GREEN}Extraction completed. No archives remain in output.${C_DEFAULT}"
 }
 
 # Function: dir_balance
