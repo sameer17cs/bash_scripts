@@ -207,8 +207,28 @@ extract() {
     base_name="$(basename "${archive}" | sed 's/\.[^.]*$//')"
     output_folder="$OUTPUT_DIR/$base_name"
     mkdir -p "$output_folder"
-    echo -e "${C_BLUE}Extracting $archive to $output_folder...${C_DEFAULT}"
-    unar -o "$output_folder" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
+    tmp_extract_dir=$(mktemp -d)
+    echo -e "${C_BLUE}Extracting $archive to temporary directory $tmp_extract_dir...${C_DEFAULT}"
+    unar -o "$tmp_extract_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
+    # Check for single top-level directory with same name as archive
+    top_level_items=("$tmp_extract_dir"/*)
+    if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
+      single_dir_name="$(basename "${top_level_items[0]}")"
+      if [ "$single_dir_name" = "$base_name" ]; then
+        # Move contents of the single directory up one level
+        mv "${top_level_items[0]}"/* "$output_folder" 2>/dev/null || true
+        # If there are hidden files, move them too
+        shopt -s dotglob
+        mv "${top_level_items[0]}"/* "$output_folder" 2>/dev/null || true
+        shopt -u dotglob
+        rmdir "${top_level_items[0]}"
+      else
+        mv "$tmp_extract_dir"/* "$output_folder" 2>/dev/null || true
+      fi
+    else
+      mv "$tmp_extract_dir"/* "$output_folder" 2>/dev/null || true
+    fi
+    rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
   done
 
   # 2. Copy all other non-archive files and directories from input to output, preserving structure
@@ -233,8 +253,27 @@ extract() {
       for archive in "${archives[@]}"; do
         archive_dir="${archive%.*}"
         mkdir -p "$archive_dir"
-        echo -e "${C_BLUE}Extracting $archive to $archive_dir...${C_DEFAULT}"
-        unar -o "$archive_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
+        tmp_extract_dir=$(mktemp -d)
+        echo -e "${C_BLUE}Extracting $archive to temporary directory $tmp_extract_dir...${C_DEFAULT}"
+        unar -o "$tmp_extract_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
+        # Check for single top-level directory with same name as archive
+        top_level_items=("$tmp_extract_dir"/*)
+        if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
+          single_dir_name="$(basename "${top_level_items[0]}")"
+          base_name="$(basename "$archive_dir")"
+          if [ "$single_dir_name" = "$base_name" ]; then
+            mv "${top_level_items[0]}"/* "$archive_dir" 2>/dev/null || true
+            shopt -s dotglob
+            mv "${top_level_items[0]}"/* "$archive_dir" 2>/dev/null || true
+            shopt -u dotglob
+            rmdir "${top_level_items[0]}"
+          else
+            mv "$tmp_extract_dir"/* "$archive_dir" 2>/dev/null || true
+          fi
+        else
+          mv "$tmp_extract_dir"/* "$archive_dir" 2>/dev/null || true
+        fi
+        rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
         rm -f "$archive"
       done
     done
