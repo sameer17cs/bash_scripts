@@ -165,8 +165,20 @@ add_ssh_key() {
 }
 
 # Function: extract
-# Purpose: Recursively extract all supported archive files (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory, preserving folder hierarchy and ensuring no archives remain in the output. Handles nested archives, avoids double-nesting, and cleans up marker files. Installs 'unar' if not present.
+# Purpose: Recursively and in parallel, extract all supported archive files (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
+#          It preserves folder hierarchy, ensures no archives remain, handles nested archives, avoids double-nesting, and cleans up temporary files.
+#          The temporary directory is created inside the output directory, and parallelization is handled with background jobs.
+# Arguments:
+#   $1: Input directory path.
+#   $2: Output directory path.
+#   $3: (Optional) Number of parallel threads to use (default: 4).
 extract() {
+
+  # Process arguments: Input dir, Output dir, and optional Thread Count
+  INPUT_DIR="${1}"
+  OUTPUT_DIR="${2}"
+  THREAD_COUNT="${3}"
+
   # Define archive patterns variable for reuse as an array
   ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
 
@@ -181,7 +193,8 @@ extract() {
     base_name="$(basename "${archive_path%.*}")"
     mkdir -p "$dest_dir"  # Ensure destination directory exists
     local tmp_extract_dir
-    tmp_extract_dir=$(mktemp -d)  # Create a temporary directory for extraction
+    # Create a unique temporary directory inside the session's main temp folder
+    tmp_extract_dir=$(mktemp -d "${SESSION_TMP_DIR}/extract.XXXXXX")
     echo -e "${C_BLUE}Extracting $archive_path to temporary directory $tmp_extract_dir...${C_DEFAULT}"
     unar -o "$tmp_extract_dir" "$archive_path" || echo -e "${C_YELLOW}Warning: Some files in $archive_path could not be extracted.${C_DEFAULT}"
     # Check for single top-level directory with same name as archive
@@ -205,28 +218,45 @@ extract() {
       mv "$tmp_extract_dir"/* "$dest_dir" 2>/dev/null || true
     fi
     # Remove the temporary extraction directory
-    rmdir "$tmp_extract_dir" 2>/dev/null || rm -rf "$tmp_extract_dir"
+    rm -rf "$tmp_extract_dir"
   }
 
   # Helper function for recursive extraction of all nested archives
   # Arguments:
   #   $1: Base directory to search for archives
+  #   $2: Number of parallel threads
   extract_archives_recursive() {
     local base_dir="$1"
+    local thread_count="$2"
     while true; do
       local archives=()
-      # Find all archives in base_dir and store in an array
-      while IFS= read -r archive; do
-        archives+=("$archive")
-      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \))
-      [ ${#archives[@]} -eq 0 ] && break  # Exit loop if no archives found
+      # Find all archives, using -print0 for safety, and read into an array
+      while IFS= read -r -d $'\0' archive; do
+          archives+=("$archive")
+      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \) -print0)
+      
+      # Exit loop if no archives are found
+      if [ ${#archives[@]} -eq 0 ]; then
+        break
+      fi
+
+      # Process archives in parallel using background jobs
       for archive in "${archives[@]}"; do
-        local archive_dir
-        archive_dir="${archive%.*}"
-        # Extract archive and remove it
-        smart_extract_archive "$archive" "$archive_dir"
-        rm -f "$archive"
+        # Pause if the number of running jobs reaches the thread limit
+        while [[ $(jobs -p | wc -l) -ge $thread_count ]]; do
+          wait -n # Wait for any single background job to finish
+        done
+
+        # Launch extraction and removal in a background subshell
+        (
+          archive_dir="${archive%.*}"
+          smart_extract_archive "$archive" "$archive_dir"
+          rm -f "$archive"
+        ) &
       done
+      
+      # Wait for all jobs in the current batch to complete before finding more archives
+      wait
     done
   }
 
@@ -252,12 +282,8 @@ extract() {
     fi
   }
 
-  #### main logic flow
+  #### main logic flow ####
 
-  install_dependencies  # Ensure unar is installed
-
-  INPUT_DIR="${1}"
-  OUTPUT_DIR="${2}"
   # Prompt for input/output directories if not provided as arguments
   if [[ -z "$INPUT_DIR" ]]; then
     read -rp "Please enter the input directory: " INPUT_DIR
@@ -265,14 +291,41 @@ extract() {
   if [[ -z "$OUTPUT_DIR" ]]; then
     read -rp "Please enter the output directory: " OUTPUT_DIR
   fi
+  # Prompt for thread count if not provided as an argument, with a default of 4
+  if [[ -z "$THREAD_COUNT" ]]; then
+    read -rp "Enter number of parallel threads (default: 4): " THREAD_COUNT
+    THREAD_COUNT=${THREAD_COUNT:-4}
+  fi
+  
+  install_dependencies  # Ensure unar is installed
+
   mkdir -p "${OUTPUT_DIR}"  # Ensure output directory exists
 
-  # 1. Extract all archives in the top level of the input directory into the output directory
-  find "$INPUT_DIR" -maxdepth 1 -type f \( "${ARCHIVE_PATTERNS[@]}" \) | while IFS= read -r archive; do
-    base_name="$(basename "${archive}" | sed 's/\.[^.]*$//')"
-    output_folder="$OUTPUT_DIR/$base_name"
-    smart_extract_archive "$archive" "$output_folder"
+  # Create a single temporary directory for the entire session within the output directory
+  SESSION_TMP_DIR=$(mktemp -d "$OUTPUT_DIR/.tmp_extract_XXXXXX")
+
+  echo "Starting extraction with $THREAD_COUNT parallel threads..."
+
+  # 1. Extract all archives in the top level of the input directory in parallel
+  local top_level_archives=()
+  while IFS= read -r -d $'\0' archive; do
+      top_level_archives+=("$archive")
+  done < <(find "$INPUT_DIR" -maxdepth 1 -type f \( "${ARCHIVE_PATTERNS[@]}" \) -print0)
+
+  for archive in "${top_level_archives[@]}"; do
+    while [[ $(jobs -p | wc -l) -ge "$THREAD_COUNT" ]]; do
+      wait -n
+    done
+    
+    (
+      base_name="$(basename "$archive" | sed "s/\.[^.]*$//")"
+      output_folder="$OUTPUT_DIR/$base_name"
+      smart_extract_archive "$archive" "$output_folder"
+    ) &
   done
+
+  # Wait for all initial extractions to complete
+  wait
 
   # 2. Copy all other non-archive files and directories from input to output, preserving structure
   # Copy non-archive files at the top level
@@ -284,11 +337,12 @@ extract() {
     cp -r "$dir" "$2/$base"
   ' _ '{}' "$OUTPUT_DIR" \;
 
-  # 3. Recursively extract any archives found in the output directory, deleting each archive after extraction
-  extract_archives_recursive "$OUTPUT_DIR"
+  # 3. Recursively extract any remaining archives found in the output directory, in parallel
+  extract_archives_recursive "$OUTPUT_DIR" "$THREAD_COUNT"
 
-  # Cleanup: remove any .extracted_marker files left by unar
-  find "$OUTPUT_DIR" -name '*.extracted_marker' -delete
+  # Final cleanup
+  rm -rf "$SESSION_TMP_DIR"  # Remove the main temporary directory
+  find "$OUTPUT_DIR" -name '*.extracted_marker' -delete # Remove any marker files left by unar
 
   echo -e "${C_GREEN}Extraction completed. No archives remain in output.${C_DEFAULT}"
 }
