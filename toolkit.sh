@@ -173,14 +173,34 @@ add_ssh_key() {
 #   $2: Output directory path.
 #   $3: (Optional) Number of parallel threads to use (default: 4).
 extract() {
+  # --- Argument and Variable Setup ---
+  local INPUT_DIR="${1}"
+  local OUTPUT_DIR="${2}"
+  local THREAD_COUNT="${3}"
 
-  # Process arguments: Input dir, Output dir, and optional Thread Count
-  INPUT_DIR="${1}"
-  OUTPUT_DIR="${2}"
-  THREAD_COUNT="${3}"
+  # Prompt for arguments if they are not provided
+  if [[ -z "$INPUT_DIR" ]]; then
+    read -rp "Please enter the input directory: " INPUT_DIR
+  fi
+  if [[ -z "$OUTPUT_DIR" ]]; then
+    read -rp "Please enter the output directory: " OUTPUT_DIR
+  fi
+  if [[ -z "$THREAD_COUNT" ]]; then
+    read -rp "Enter number of parallel threads (default: 4): " THREAD_COUNT
+    THREAD_COUNT=${THREAD_COUNT:-4}
+  fi
+
+  # Create output directory now to ensure it exists for the temp directory
+  mkdir -p "${OUTPUT_DIR}"
+
+  # Create a single temporary directory for the entire session within the output directory
+  local SESSION_TMP_DIR
+  SESSION_TMP_DIR=$(mktemp -d "$OUTPUT_DIR/.tmp_extract_XXXXXX")
 
   # Define archive patterns variable for reuse as an array
-  ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
+  local ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
+
+  # --- Helper Functions ---
 
   # Helper function to extract an archive and avoid double-nesting
   # Arguments:
@@ -283,26 +303,8 @@ extract() {
   }
 
   #### main logic flow ####
-
-  # Prompt for input/output directories if not provided as arguments
-  if [[ -z "$INPUT_DIR" ]]; then
-    read -rp "Please enter the input directory: " INPUT_DIR
-  fi
-  if [[ -z "$OUTPUT_DIR" ]]; then
-    read -rp "Please enter the output directory: " OUTPUT_DIR
-  fi
-  # Prompt for thread count if not provided as an argument, with a default of 4
-  if [[ -z "$THREAD_COUNT" ]]; then
-    read -rp "Enter number of parallel threads (default: 4): " THREAD_COUNT
-    THREAD_COUNT=${THREAD_COUNT:-4}
-  fi
   
   install_dependencies  # Ensure unar is installed
-
-  mkdir -p "${OUTPUT_DIR}"  # Ensure output directory exists
-
-  # Create a single temporary directory for the entire session within the output directory
-  SESSION_TMP_DIR=$(mktemp -d "$OUTPUT_DIR/.tmp_extract_XXXXXX")
 
   echo "Starting extraction with $THREAD_COUNT parallel threads..."
 
@@ -344,7 +346,7 @@ extract() {
   rm -rf "$SESSION_TMP_DIR"  # Remove the main temporary directory
   find "$OUTPUT_DIR" -name '*.extracted_marker' -delete # Remove any marker files left by unar
 
-  echo -e "${C_GREEN}Extraction completed. No archives remain in output.${C_DEFAULT}"
+  echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
 }
 
 # Function: dir_balance
