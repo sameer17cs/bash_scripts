@@ -166,7 +166,7 @@ add_ssh_key() {
 
 # Function: extract
 # Purpose: Recursively and in parallel, extract all supported archive files (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
-#          It preserves folder hierarchy, ensures no archives remain, handles nested archives, avoids double-nesting, and cleans up temporary files.
+#          It preserves folder hierarchy, logs successes and failures to a 'meta' directory, handles nested archives, avoids double-nesting, and cleans up temporary files.
 #          The temporary directory is created inside the output directory, and parallelization is handled with background jobs.
 # Arguments:
 #   $1: Input directory path.
@@ -190,12 +190,15 @@ extract() {
     THREAD_COUNT=${THREAD_COUNT:-4}
   fi
 
-  # Create output directory now to ensure it exists for the temp directory
-  mkdir -p "${OUTPUT_DIR}"
+  # Create output and meta directories
+  mkdir -p "${OUTPUT_DIR}/meta"
+  local META_DIR="${OUTPUT_DIR}/meta"
 
-  # Create a single temporary directory for the entire session within the output directory
-  local SESSION_TMP_DIR
-  SESSION_TMP_DIR=$(mktemp -d "$OUTPUT_DIR/.tmp_extract_XXXXXX")
+  # Define log file paths
+  local SUCCESS_LOG_FILE="${META_DIR}/success.log"
+  local ERROR_LOG_FILE="${META_DIR}/error.log"
+  # Touch log files to ensure they exist
+  touch "$SUCCESS_LOG_FILE" "$ERROR_LOG_FILE"
 
   # Define archive patterns variable for reuse as an array
   local ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
@@ -213,10 +216,16 @@ extract() {
     base_name="$(basename "${archive_path%.*}")"
     mkdir -p "$dest_dir"  # Ensure destination directory exists
     local tmp_extract_dir
-    # Create a unique temporary directory inside the session's main temp folder
-    tmp_extract_dir=$(mktemp -d "${SESSION_TMP_DIR}/extract.XXXXXX")
+    # Create a unique temporary directory inside the meta folder
+    tmp_extract_dir=$(mktemp -d "${META_DIR}/extract.XXXXXX")
     echo -e "${C_BLUE}Extracting $archive_path to temporary directory $tmp_extract_dir...${C_DEFAULT}"
-    unar -o "$tmp_extract_dir" "$archive_path" || echo -e "${C_YELLOW}Warning: Some files in $archive_path could not be extracted.${C_DEFAULT}"
+    # Attempt to extract and log success or failure
+    if unar -o "$tmp_extract_dir" "$archive_path"; then
+        echo "$archive_path" >> "$SUCCESS_LOG_FILE"
+    else
+        echo -e "${C_YELLOW}Warning: Failed to extract ${archive_path}.${C_DEFAULT}"
+        echo "$archive_path" >> "$ERROR_LOG_FILE"
+    fi
     # Check for single top-level directory with same name as archive
     local top_level_items=("$tmp_extract_dir"/*)
     if [ ${#top_level_items[@]} -eq 1 ] && [ -d "${top_level_items[0]}" ]; then
@@ -342,11 +351,27 @@ extract() {
   # 3. Recursively extract any remaining archives found in the output directory, in parallel
   extract_archives_recursive "$OUTPUT_DIR" "$THREAD_COUNT"
 
-  # Final cleanup
-  rm -rf "$SESSION_TMP_DIR"  # Remove the main temporary directory
+  # --- Final Counts and Cleanup ---
+  
+  # Count the total number of unzipped archives
+  local unzipped_files_count
+  unzipped_files_count=$(wc -l < "$SUCCESS_LOG_FILE" | tr -d ' ')
+
+  # Count the number of failed extractions
+  local error_files_count
+  error_files_count=$(wc -l < "$ERROR_LOG_FILE" | tr -d ' ')
+  
+  # Count the total number of files in the output directory
+  local total_output_files
+  total_output_files=$(find "$OUTPUT_DIR" -path "${META_DIR}" -prune -o -type f | wc -l)
+
+  # Final cleanup of temporary marker files
   find "$OUTPUT_DIR" -name '*.extracted_marker' -delete # Remove any marker files left by unar
 
-  echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
+  echo -e "\n${C_GREEN}---- Extraction Summary ----${C_DEFAULT}"
+  echo -e "Successfully unzipped: ${C_GREEN}${unzipped_files_count}${C_DEFAULT} archives."
+  echo -e "Failed to extract:    ${C_RED}${error_files_count}${C_DEFAULT} archives."
+  echo -e "Total files in output: ${C_BLUE}${total_output_files}${C_DEFAULT} files."
 }
 
 # Function: dir_balance
