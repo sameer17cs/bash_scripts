@@ -168,6 +168,9 @@ add_ssh_key() {
 # Purpose: This function extracts various archive file types (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
 #          It checks for the presence of the 'unar' tool, installs it if needed, and handles extraction for each supported archive file.
 extract() {
+  # Define archive patterns variable for reuse as an array
+  ARCHIVE_PATTERNS=(-iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2")
+
   # Check if 'unar' is installed; if not, install it based on Linux package manager
   if ! command -v unar &> /dev/null; then
     echo -e "${C_BLUE}unar is not installed. Installing...${C_DEFAULT}"
@@ -189,7 +192,6 @@ extract() {
     fi
   fi
 
-  # Input and output directories: read from args or prompt
   INPUT_DIR="${1}"
   OUTPUT_DIR="${2}"
   if [[ -z "$INPUT_DIR" ]]; then
@@ -198,26 +200,52 @@ extract() {
   if [[ -z "$OUTPUT_DIR" ]]; then
     read -rp "Please enter the output directory: " OUTPUT_DIR
   fi
-
-  # Ensure output directory exists
   mkdir -p "${OUTPUT_DIR}"
 
-  # Find and process all archive files in the input directory
-  find "${INPUT_DIR}" -type f \( -iname "*.zip" -o -iname "*.rar" -o -iname "*.7z" -o -iname "*.tar" -o -iname "*.tar.gz" -o -iname "*.tar.bz2" \) | while IFS= read -r archive; do
-      # Generate output folder based on the archive path
-      relative_path="${archive#${INPUT_DIR}/}"
-      base_name="${relative_path%.*}"
-      output_folder="${OUTPUT_DIR}/${base_name}"
-
-      # Create target output directory
-      mkdir -p "${output_folder}"
-
-      # Extract archive contents into the designated output folder using unar
-      echo -e "${C_BLUE}Extracting ${archive} to ${output_folder}...${C_DEFAULT}"
-      unar -o "${output_folder}" "${archive}" || echo -e "${C_YELLOW}Warning: Some files in ${archive} could not be extracted.${C_DEFAULT}"
+  # 1. Extract all archives in the top level of the input directory into the output directory
+  find "$INPUT_DIR" -maxdepth 1 -type f \( "${ARCHIVE_PATTERNS[@]}" \) | while IFS= read -r archive; do
+    base_name="$(basename "${archive}" | sed 's/\.[^.]*$//')"
+    output_folder="$OUTPUT_DIR/$base_name"
+    mkdir -p "$output_folder"
+    echo -e "${C_BLUE}Extracting $archive to $output_folder...${C_DEFAULT}"
+    unar -o "$output_folder" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
   done
 
-  echo -e "${C_GREEN}Extraction completed.${C_DEFAULT}"
+  # 2. Copy all other non-archive files and directories from input to output, preserving structure
+  # Copy non-archive files
+  find "$INPUT_DIR" -maxdepth 1 -type f ! \( "${ARCHIVE_PATTERNS[@]}" \) -exec cp '{}' "$OUTPUT_DIR/" \;
+  # Copy non-archive directories (excluding . and ..)
+  find "$INPUT_DIR" -mindepth 1 -maxdepth 1 -type d -exec bash -c '
+    dir="$1"
+    base="$(basename "$dir")"
+    cp -r "$dir" "$2/$base"
+  ' _ '{}' "$OUTPUT_DIR" \;
+
+  # 3. Recursively extract any archives found in the output directory, deleting each archive after extraction
+  extract_archives_recursive() {
+    local base_dir="$1"
+    while true; do
+      local archives=()
+      while IFS= read -r archive; do
+        archives+=("$archive")
+      done < <(find "$base_dir" -type f \( "${ARCHIVE_PATTERNS[@]}" \))
+      [ ${#archives[@]} -eq 0 ] && break
+      for archive in "${archives[@]}"; do
+        archive_dir="${archive%.*}"
+        mkdir -p "$archive_dir"
+        echo -e "${C_BLUE}Extracting $archive to $archive_dir...${C_DEFAULT}"
+        unar -o "$archive_dir" "$archive" || echo -e "${C_YELLOW}Warning: Some files in $archive could not be extracted.${C_DEFAULT}"
+        rm -f "$archive"
+      done
+    done
+  }
+
+  extract_archives_recursive "$OUTPUT_DIR"
+
+  # Cleanup: remove any .extracted_marker files left by unar
+  find "$OUTPUT_DIR" -name '*.extracted_marker' -delete
+
+  echo -e "${C_GREEN}Extraction completed. No archives remain in output.${C_DEFAULT}"
 }
 
 # Function: dir_balance
