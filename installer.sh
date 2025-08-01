@@ -275,18 +275,6 @@ elastic_kibana() {
              "cluster.routing.allocation.disk.threshold_enabled": "false"
            }
          }'
-    # OR if you prefer lowering them to certain GB thresholds, you could comment out
-    # the above curl and uncomment the snippet below:
-    #
-    # curl -X PUT "http://127.0.0.1:9200/_cluster/settings" \
-    #      -H 'Content-Type: application/json' \
-    #      -d '{
-    #        "transient": {
-    #          "cluster.routing.allocation.disk.watermark.low": "5gb",
-    #          "cluster.routing.allocation.disk.watermark.high": "2gb",
-    #          "cluster.routing.allocation.disk.watermark.flood_stage": "1gb"
-    #        }
-    #      }'
     echo "\n"
   else
     echo "Skipping changes to disk watermark."
@@ -297,7 +285,9 @@ elastic_kibana() {
   ############################
   local kibana_container="kibana"
   local default_kibana_version="9.1.0"
-  local ELASTIC_HOST="http://host.docker.internal:9200"  # Or http://127.0.0.1:9200 if you're on Linux
+  local ELASTIC_HOST="http://host.docker.internal:9200"
+  local key=$(openssl rand -base64 32)
+
 
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
   _prompt_for_input_ KIBANA_DATADIR "Enter Kibana data directory full path" true
@@ -308,6 +298,7 @@ elastic_kibana() {
     --volume "$KIBANA_DATADIR":/usr/share/kibana/data \
     --env "ELASTICSEARCH_HOSTS=$ELASTIC_HOST" \
     --env "XPACK_SECURITY_ENABLED=false" \
+    --env "XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=$key" \
     --name $kibana_container docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-$default_kibana_version}
 
   echo -e "Kibana setup complete (security disabled)."
