@@ -232,7 +232,7 @@ elastic_kibana() {
   # Install Elasticsearch without password (security disabled)
   ############################
   local elastic_container="elasticsearch"
-  local default_version="8.14.0"
+  local default_version="9.1.0"
   local elastic_username="elastic"
 
   _prompt_for_input_ VERSION "Enter Elasticsearch version (default: $default_version)" false
@@ -296,7 +296,7 @@ elastic_kibana() {
   # Install Kibana without password (security disabled)
   ############################
   local kibana_container="kibana"
-  local default_kibana_version="8.14.0"
+  local default_kibana_version="9.1.0"
   local ELASTIC_HOST="http://host.docker.internal:9200"  # Or http://127.0.0.1:9200 if you're on Linux
 
   _prompt_for_input_ KIBANA_VERSION "Enter Kibana version (default: $default_kibana_version)" false
