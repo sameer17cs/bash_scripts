@@ -478,9 +478,7 @@ gzip() {
     exit 1
   fi
 
-  echo -e "${C_BLUE}Starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
-    
-    # Read all compressible files into array (only once!)
+  # Read all compressible files into array (only once!)
   local files_to_compress=()
   while IFS= read -r file; do
     [[ -n "$file" ]] && files_to_compress+=("$file")
@@ -496,47 +494,20 @@ gzip() {
     return 0
   fi
   
-  # Compress files in parallel using background jobs
-  echo -e "${C_BLUE}Starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
+    # Compress files in parallel using xargs
+  echo -e "${C_BLUE}Found $total_files files to compress, starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
   
   local start_time=$(date +%s)
-  local running_jobs=0
-  local completed_files=0
   
-  for file in "${files_to_compress[@]}"; do
-    # Wait if we've reached the parallel limit
-    while [[ $running_jobs -ge $PARALLEL_COUNT ]]; do
-      wait -n
-      running_jobs=$((running_jobs - 1))
-    done
-    
-    # Start compression in background
-    (
-      local file_start=$(date +%s)
-      local filename=$(basename "$file")
-      echo -e "${C_BLUE}[$(date '+%H:%M:%S')] Starting compression: $filename${C_DEFAULT}"
-      
-      if /usr/bin/gzip -9 -f "$file"; then
-        local file_end=$(date +%s)
-        local file_duration=$((file_end - file_start))
-        echo -e "${C_GREEN}[$(date '+%H:%M:%S')] ✓ Completed: $filename (${file_duration}s)${C_DEFAULT}"
-      else
-        echo -e "${C_RED}[$(date '+%H:%M:%S')] ✗ Failed: $filename${C_DEFAULT}"
-      fi
-    ) &
-    
-    running_jobs=$((running_jobs + 1))
-  done
-  
-  # Wait for all background jobs to complete
-  wait
+  # Use xargs to compress files in parallel with gzip verbose output
+  printf '%s\n' "${files_to_compress[@]}" | xargs -P "$PARALLEL_COUNT" -I {} gzip -9 -f -v {}
   
   local end_time=$(date +%s)
   local total_duration=$((end_time - start_time))
   echo -e "${C_GREEN}[$(date '+%H:%M:%S')] All compression jobs completed in ${total_duration}s${C_DEFAULT}"
-
-  # Count compressed files
-  local compressed_files=$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.gz" | wc -l)
+  
+  # Count newly compressed files (excluding hidden files)
+  local compressed_files=$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.gz" ! -name ".*" | wc -l)
   
   echo -e "${C_GREEN}Compression completed successfully!${C_DEFAULT}"
   echo -e "${C_BLUE}Total files compressed: $compressed_files${C_DEFAULT}"
