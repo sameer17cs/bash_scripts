@@ -58,6 +58,34 @@ _print_array_() {
   done
 }
 
+# -------------------------------------------------------------------------
+# bytes_to_mb
+#
+# Description:
+# Converts bytes to megabytes with 1 decimal place precision.
+#
+# Parameters:
+#   bytes - The number of bytes to convert
+#
+# Returns:
+#   The converted value in MB with 1 decimal place
+#
+# Example Usage:
+#   mb_value=$(bytes_to_mb 1048576)
+#   echo "$mb_value"  # Output: 1.0
+#
+# -------------------------------------------------------------------------
+bytes_to_mb() {
+  local bytes=$1
+  local result=$(echo "scale=2; $bytes / 1024 / 1024" | bc -l 2>/dev/null || echo "0")
+  # Add leading zero if result starts with decimal point
+  if [[ "$result" =~ ^\. ]]; then
+    echo "0$result"
+  else
+    echo "$result"
+  fi
+}
+
 # Define color codes for easy reference
 C_RED="\033[0;31m"
 C_GREEN="\033[0;32m"

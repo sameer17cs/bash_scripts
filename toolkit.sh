@@ -486,7 +486,6 @@ gzip_parallel() {
   
   # Check array size
   local total_files=${#files_to_compress[@]}
-  echo -e "${C_BLUE}Found $total_files files to compress${C_DEFAULT}"
   
   # Exit if no files to compress
   if [[ $total_files -eq 0 ]]; then
@@ -494,7 +493,7 @@ gzip_parallel() {
     return 0
   fi
   
-    # Compress files in parallel using xargs
+  # Compress files in parallel using xargs
   echo -e "${C_BLUE}Found $total_files files to compress, starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
   
   local start_time=$(date +%s)
@@ -515,14 +514,18 @@ gzip_parallel() {
       local gzip_info=$(gzip -l "$gz_file" | tail -1)
       local comp_size=$(echo "$gzip_info" | awk '{print $1}')
       local orig_size=$(echo "$gzip_info" | awk '{print $2}')
-      local percent=$(echo "scale=1; (($orig_size - $comp_size) * 100) / $orig_size" | bc -l 2>/dev/null || echo "0")
-      echo -e "  $(basename "$file"): ${orig_size}B → ${comp_size}B (${percent}% saved)"
+      local percent=$(echo "scale=2; (($orig_size - $comp_size) * 100) / $orig_size" | bc -l 2>/dev/null || echo "0")
+      local orig_mb=$(bytes_to_mb $orig_size)
+      local comp_mb=$(bytes_to_mb $comp_size)
+      echo -e "  $(basename "$file"): ${orig_mb}MB → ${comp_mb}MB (${percent}% saved)"
       total_orig=$((total_orig + orig_size))
       total_comp=$((total_comp + comp_size))
     fi
   done
-  local total_percent=$(echo "scale=1; (($total_orig - $total_comp) * 100) / $total_orig" | bc -l 2>/dev/null || echo "0")
-  echo -e "${C_GREEN}Total: ${total_orig}B → ${total_comp}B (${total_percent}% saved)${C_DEFAULT}"
+  local total_percent=$(echo "scale=2; (($total_orig - $total_comp) * 100) / $total_orig" | bc -l 2>/dev/null || echo "0")
+  local total_orig_mb=$(bytes_to_mb $total_orig)
+  local total_comp_mb=$(bytes_to_mb $total_comp)
+  echo -e "${C_GREEN}Total: ${total_orig_mb}MB → ${total_comp_mb}MB (${total_percent}% saved)${C_DEFAULT}"
 }
 
 main () {
