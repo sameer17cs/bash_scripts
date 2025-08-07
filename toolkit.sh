@@ -445,14 +445,13 @@ dir_balance() {
   echo -e "${C_GREEN}Distribution completed successfully.${C_DEFAULT}"
 }
 
-# Function: gzip_parallel
-# Purpose: Compress all files in a specified directory using parallel gzip compression.
-#          The function takes the number of parallel processes as input and uses GNU parallel
-#          or xargs to process multiple files simultaneously for faster compression.
+# Function: gzip_dir
+# Purpose: Compress all files in a specified directory using gzip compression.
+#          Uses xargs to compress files in parallel with gzip verbose output.
 # Arguments:
 #   $1: Directory path containing files to compress (optional, will prompt if not provided)
-#   $2: Number of parallel processes (optional, will prompt if not provided)
-gzip_parallel() {
+#   $2: Number of parallel processes (optional, will prompt if not provided, default: 4, max: 10)
+gzip_dir() {
   local TARGET_DIR="${1}"
   local PARALLEL_COUNT="${2}"
 
@@ -539,8 +538,7 @@ main () {
     add_ssh_key
     extract
     dir_balance
-    gzip_parallel
-    
+    gzip_dir
   )
   
   # Check if function exists & run it, otherwise list options
