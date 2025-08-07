@@ -493,7 +493,7 @@ gzip_dir() {
   fi
   
   # Compress files in parallel using xargs
-  echo -e "${C_BLUE}Found $total_files files to compress, starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
+  echo -e "${C_PURPLE}Found $total_files files to compress, starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
   
   local start_time=$(date +%s)
   
@@ -505,7 +505,7 @@ gzip_dir() {
   echo -e "${C_GREEN}[$(date '+%H:%M:%S')] All compression jobs completed in ${total_duration}s${C_DEFAULT}"
   
   # Show compression statistics
-  echo -e "${C_BLUE}Compression Statistics:${C_DEFAULT}"
+  echo -e "${C_PURPLE}Compression Statistics:${C_DEFAULT}"
   local total_orig=0 total_comp=0
   for file in "${files_to_compress[@]}"; do
     local gz_file="${file}.gz"
@@ -516,7 +516,7 @@ gzip_dir() {
       local percent=$(echo "scale=2; (($orig_size - $comp_size) * 100) / $orig_size" | bc -l 2>/dev/null || echo "0")
       local orig_mb=$(bytes_to_mb $orig_size)
       local comp_mb=$(bytes_to_mb $comp_size)
-      echo -e "  $(basename "$file"): ${orig_mb}MB → ${comp_mb}MB (${percent}% saved)"
+      echo -e "${C_BLUE}  $(basename "$file"): ${orig_mb}MB → ${comp_mb}MB (${percent}% saved)${C_DEFAULT}"
       total_orig=$((total_orig + orig_size))
       total_comp=$((total_comp + comp_size))
     fi
@@ -524,7 +524,7 @@ gzip_dir() {
   local total_percent=$(echo "scale=2; (($total_orig - $total_comp) * 100) / $total_orig" | bc -l 2>/dev/null || echo "0")
   local total_orig_mb=$(bytes_to_mb $total_orig)
   local total_comp_mb=$(bytes_to_mb $total_comp)
-  echo -e "${C_GREEN}Total: ${total_orig_mb}MB → ${total_comp_mb}MB (${total_percent}% saved)${C_DEFAULT}"
+  echo -e "${C_PURPLE}Total: ${total_orig_mb}MB → ${total_comp_mb}MB (${total_percent}% saved)${C_DEFAULT}"
 }
 
 main () {
