@@ -445,6 +445,107 @@ dir_balance() {
   echo -e "${C_GREEN}Distribution completed successfully.${C_DEFAULT}"
 }
 
+# Function: gzip
+# Purpose: Compress all files in a specified directory using parallel gzip compression.
+#          The function takes the number of parallel processes as input and uses GNU parallel
+#          or xargs to process multiple files simultaneously for faster compression.
+# Arguments:
+#   $1: Directory path containing files to compress (optional, will prompt if not provided)
+#   $2: Number of parallel processes (optional, will prompt if not provided)
+gzip() {
+  local TARGET_DIR="${1}"
+  local PARALLEL_COUNT="${2}"
+
+  # Prompt for arguments if they are not provided
+  if [[ -z "$TARGET_DIR" ]]; then
+    _prompt_for_input_ TARGET_DIR "Please enter the directory path containing files to compress" true
+  fi
+
+  if [[ -z "$PARALLEL_COUNT" ]]; then
+    _prompt_for_input_ PARALLEL_COUNT "Please enter the number of parallel processes (default: 4)" false
+    PARALLEL_COUNT=${PARALLEL_COUNT:-4}
+  fi
+
+  # Validate directory exists
+  if [[ ! -d "$TARGET_DIR" ]]; then
+    echo -e "${C_RED}Error: Directory '$TARGET_DIR' does not exist.${C_DEFAULT}"
+    exit 1
+  fi
+
+  # Validate parallel count is a positive integer
+  if ! [[ "$PARALLEL_COUNT" =~ ^[0-9]+$ ]] || [[ "$PARALLEL_COUNT" -lt 1 ]]; then
+    echo -e "${C_RED}Error: Parallel count must be a positive integer.${C_DEFAULT}"
+    exit 1
+  fi
+
+  echo -e "${C_BLUE}Starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
+    
+    # Read all compressible files into array (only once!)
+  local files_to_compress=()
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files_to_compress+=("$file")
+  done < <(find "$TARGET_DIR" -maxdepth 1 -type f ! -name "*.gz" ! -name ".*" ! -name "*.zip" ! -name "*.bz2" ! -name "*.xz" ! -name "*.7z" ! -name "*.rar" ! -name "*.tar")
+  
+  # Check array size
+  local total_files=${#files_to_compress[@]}
+  echo -e "${C_BLUE}Found $total_files files to compress${C_DEFAULT}"
+  
+  # Exit if no files to compress
+  if [[ $total_files -eq 0 ]]; then
+    echo -e "${C_YELLOW}No files to compress found.${C_DEFAULT}"
+    return 0
+  fi
+  
+  # Compress files in parallel using background jobs
+  echo -e "${C_BLUE}Starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
+  
+  local start_time=$(date +%s)
+  local running_jobs=0
+  local completed_files=0
+  
+  for file in "${files_to_compress[@]}"; do
+    # Wait if we've reached the parallel limit
+    while [[ $running_jobs -ge $PARALLEL_COUNT ]]; do
+      wait -n
+      running_jobs=$((running_jobs - 1))
+    done
+    
+    # Start compression in background
+    (
+      local file_start=$(date +%s)
+      local filename=$(basename "$file")
+      echo -e "${C_BLUE}[$(date '+%H:%M:%S')] Starting compression: $filename${C_DEFAULT}"
+      
+      if /usr/bin/gzip -9 -f "$file"; then
+        local file_end=$(date +%s)
+        local file_duration=$((file_end - file_start))
+        echo -e "${C_GREEN}[$(date '+%H:%M:%S')] ✓ Completed: $filename (${file_duration}s)${C_DEFAULT}"
+      else
+        echo -e "${C_RED}[$(date '+%H:%M:%S')] ✗ Failed: $filename${C_DEFAULT}"
+      fi
+    ) &
+    
+    running_jobs=$((running_jobs + 1))
+  done
+  
+  # Wait for all background jobs to complete
+  wait
+  
+  local end_time=$(date +%s)
+  local total_duration=$((end_time - start_time))
+  echo -e "${C_GREEN}[$(date '+%H:%M:%S')] All compression jobs completed in ${total_duration}s${C_DEFAULT}"
+
+  # Count compressed files
+  local compressed_files=$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.gz" | wc -l)
+  
+  echo -e "${C_GREEN}Compression completed successfully!${C_DEFAULT}"
+  echo -e "${C_BLUE}Total files compressed: $compressed_files${C_DEFAULT}"
+  
+  # Show compression statistics
+  echo -e "${C_BLUE}Compression statistics:${C_DEFAULT}"
+  du -sh "$TARGET_DIR" | awk '{print "Directory size: " $1}'
+}
+
 main () {
   local option_selected=$1
   source $LIB_SCRIPT
@@ -456,6 +557,8 @@ main () {
     add_ssh_key
     extract
     dir_balance
+    gzip
+    
   )
   
   # Check if function exists & run it, otherwise list options
