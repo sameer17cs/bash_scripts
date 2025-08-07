@@ -445,14 +445,14 @@ dir_balance() {
   echo -e "${C_GREEN}Distribution completed successfully.${C_DEFAULT}"
 }
 
-# Function: gzip
+# Function: gzip_parallel
 # Purpose: Compress all files in a specified directory using parallel gzip compression.
 #          The function takes the number of parallel processes as input and uses GNU parallel
 #          or xargs to process multiple files simultaneously for faster compression.
 # Arguments:
 #   $1: Directory path containing files to compress (optional, will prompt if not provided)
 #   $2: Number of parallel processes (optional, will prompt if not provided)
-gzip() {
+gzip_parallel() {
   local TARGET_DIR="${1}"
   local PARALLEL_COUNT="${2}"
 
@@ -506,15 +506,23 @@ gzip() {
   local total_duration=$((end_time - start_time))
   echo -e "${C_GREEN}[$(date '+%H:%M:%S')] All compression jobs completed in ${total_duration}s${C_DEFAULT}"
   
-  # Count newly compressed files (excluding hidden files)
-  local compressed_files=$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.gz" ! -name ".*" | wc -l)
-  
-  echo -e "${C_GREEN}Compression completed successfully!${C_DEFAULT}"
-  echo -e "${C_BLUE}Total files compressed: $compressed_files${C_DEFAULT}"
-  
   # Show compression statistics
-  echo -e "${C_BLUE}Compression statistics:${C_DEFAULT}"
-  du -sh "$TARGET_DIR" | awk '{print "Directory size: " $1}'
+  echo -e "${C_BLUE}Compression Statistics:${C_DEFAULT}"
+  local total_orig=0 total_comp=0
+  for file in "${files_to_compress[@]}"; do
+    local gz_file="${file}.gz"
+    if [[ -f "$gz_file" ]]; then
+      local gzip_info=$(gzip -l "$gz_file" | tail -1)
+      local comp_size=$(echo "$gzip_info" | awk '{print $1}')
+      local orig_size=$(echo "$gzip_info" | awk '{print $2}')
+      local percent=$(echo "scale=1; (($orig_size - $comp_size) * 100) / $orig_size" | bc -l 2>/dev/null || echo "0")
+      echo -e "  $(basename "$file"): ${orig_size}B → ${comp_size}B (${percent}% saved)"
+      total_orig=$((total_orig + orig_size))
+      total_comp=$((total_comp + comp_size))
+    fi
+  done
+  local total_percent=$(echo "scale=1; (($total_orig - $total_comp) * 100) / $total_orig" | bc -l 2>/dev/null || echo "0")
+  echo -e "${C_GREEN}Total: ${total_orig}B → ${total_comp}B (${total_percent}% saved)${C_DEFAULT}"
 }
 
 main () {
@@ -528,7 +536,7 @@ main () {
     add_ssh_key
     extract
     dir_balance
-    gzip
+    gzip_parallel
     
   )
   
