@@ -445,6 +445,96 @@ dir_balance() {
   echo -e "${C_GREEN}Distribution completed successfully.${C_DEFAULT}"
 }
 
+# Function: gzip_dir
+# Purpose: Compress all files in a specified directory using gzip compression.
+#          Uses xargs to compress files in parallel with gzip verbose output.
+# Arguments:
+#   $1: Directory path containing files to compress (optional, will prompt if not provided)
+#   $2: Number of parallel processes (optional, will prompt if not provided, default: 4, max: 10)
+gzip_dir() {
+  local TARGET_DIR="${1}"      # Directory to compress files in
+  local PARALLEL_COUNT="${2}"  # Number of parallel processes
+
+  # Get user input for missing arguments
+  if [[ -z "$TARGET_DIR" ]]; then
+    _prompt_for_input_ TARGET_DIR "Please enter the directory path containing files to compress" true
+  fi
+
+  if [[ -z "$PARALLEL_COUNT" ]]; then
+    _prompt_for_input_ PARALLEL_COUNT "Please enter the number of parallel processes (default: 4)" false
+    PARALLEL_COUNT=${PARALLEL_COUNT:-4}  # Default to 4 if empty
+  fi
+
+  # Validate inputs before proceeding
+  if [[ ! -d "$TARGET_DIR" ]]; then
+    echo -e "${C_RED}Error: Directory '$TARGET_DIR' does not exist.${C_DEFAULT}"
+    exit 1
+  fi
+
+  # Validate parallel count is a positive integer
+  if ! [[ "$PARALLEL_COUNT" =~ ^[0-9]+$ ]] || [[ "$PARALLEL_COUNT" -lt 1 ]]; then
+    echo -e "${C_RED}Error: Parallel count must be a positive integer.${C_DEFAULT}"
+    exit 1
+  fi
+
+  # Build array of files to compress (excludes compressed & hidden files)
+  local files_to_compress=()
+  while IFS= read -r file; do
+    [[ -n "$file" ]] && files_to_compress+=("$file")
+  done < <(find "$TARGET_DIR" -maxdepth 1 -type f ! -name "*.gz" ! -name ".*" ! -name "*.zip" ! -name "*.bz2" ! -name "*.xz" ! -name "*.7z" ! -name "*.rar" ! -name "*.tar")
+  
+  local total_files=${#files_to_compress[@]}  # Count files found
+  
+  # Exit early if nothing to do
+  if [[ $total_files -eq 0 ]]; then
+    echo -e "${C_YELLOW}No files to compress found.${C_DEFAULT}"
+    return 0
+  fi
+  
+  # Start parallel compression
+  echo -e "${C_PURPLE}Found $total_files files to compress, starting parallel compression with $PARALLEL_COUNT processes...${C_DEFAULT}"
+  
+  local start_time=$(date +%s)  # Track compression time
+  
+  # Run gzip in parallel: -9 (max compression), -f (force overwrite), -v (verbose)
+  printf '%s\n' "${files_to_compress[@]}" | xargs -P "$PARALLEL_COUNT" -I {} gzip -9 -f -v {}
+  
+  local end_time=$(date +%s)
+  local total_duration=$((end_time - start_time))  # Calculate elapsed time
+  echo -e "${C_GREEN}[$(date '+%H:%M:%S')] All compression jobs completed in ${total_duration}s${C_DEFAULT}"
+  
+  # Generate compression statistics for each file
+  echo -e "${C_PURPLE}Compression Statistics:${C_DEFAULT}"
+  local total_orig=0 total_comp=0  # Accumulators for totals
+  
+  for file in "${files_to_compress[@]}"; do
+    local gz_file="${file}.gz"
+    if [[ -f "$gz_file" ]]; then
+      # Extract size info from gzip metadata
+      local gzip_info=$(gzip -l "$gz_file" | tail -1)
+      local comp_size=$(echo "$gzip_info" | awk '{print $1}')  # Compressed bytes
+      local orig_size=$(echo "$gzip_info" | awk '{print $2}')  # Original bytes
+      local percent=$(echo "scale=2; (($orig_size - $comp_size) * 100) / $orig_size" | bc -l 2>/dev/null || echo "0")  # Savings %
+      
+      # Convert to MB for display
+      local orig_mb=$(bytes_to_mb $orig_size)
+      local comp_mb=$(bytes_to_mb $comp_size)
+      
+      echo -e "${C_BLUE}  $(basename "$file"): ${orig_mb}MB → ${comp_mb}MB (${percent}% saved)${C_DEFAULT}"
+      
+      # Add to running totals
+      total_orig=$((total_orig + orig_size))
+      total_comp=$((total_comp + comp_size))
+    fi
+  done
+  
+  # Show overall compression summary
+  local total_percent=$(echo "scale=2; (($total_orig - $total_comp) * 100) / $total_orig" | bc -l 2>/dev/null || echo "0")
+  local total_orig_mb=$(bytes_to_mb $total_orig)
+  local total_comp_mb=$(bytes_to_mb $total_comp)
+  echo -e "${C_PURPLE}Total: ${total_orig_mb}MB → ${total_comp_mb}MB (${total_percent}% saved)${C_DEFAULT}"
+}
+
 main () {
   local option_selected=$1
   source $LIB_SCRIPT
@@ -456,6 +546,7 @@ main () {
     add_ssh_key
     extract
     dir_balance
+    gzip_dir
   )
   
   # Check if function exists & run it, otherwise list options
