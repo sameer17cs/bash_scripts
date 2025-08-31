@@ -10,41 +10,31 @@ set -e
 LIB_SCRIPT="_lib.sh"
 
 docker_install() {
-  echo "Installing Docker..."
+  echo "Installing Docker via official convenience script..."
 
-  _prompt_for_input_ DOCKER_VERSION "Version to install (leave empty for the latest version)"
+  # Optional channel prompt (stable/test)
+  _prompt_for_input_ DOCKER_CHANNEL "Channel to install (stable/test) [stable]" false
+  DOCKER_CHANNEL="${DOCKER_CHANNEL:-stable}"
 
+  # Stop docker if present (ignore errors)
   sudo systemctl stop docker || true
-  sleep 5
+  sleep 1
 
-  sudo apt-get -y update
-  sudo apt-get -y install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+  # Run Docker's official install script (detects Debian/Ubuntu automatically)
+  curl -fsSL https://get.docker.com | sh -s -- --channel "$DOCKER_CHANNEL"
 
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  # Post-install: add current user to docker group (ignore if group/user already set)
+  sudo usermod -aG docker "$USER" || true
 
-  sudo apt update -y
+  # Enable and start the service
+  sudo systemctl enable docker || true
+  sudo systemctl start docker || true
 
-  if [ -z "$DOCKER_VERSION" ]; then
-    echo "No version specified, installing the latest Docker version..."
-    sudo apt-get -y install docker-ce docker-ce-cli containerd.io
-  else
-    echo -e "${C_BLUE}Installing Docker version $DOCKER_VERSION...${C_DEFAULT}"
-    local available_versions=$(apt-cache madison docker-ce | awk '{print $3}')
+  # Show versions
+  docker --version || true
+  docker compose version || true
 
-    if echo "$available_versions" | grep -q "^$DOCKER_VERSION\$"; then
-      sudo apt-get -y install docker-ce=$DOCKER_VERSION docker-ce-cli=$DOCKER_VERSION containerd.io
-    else
-      echo -e "${C_RED}Specified Docker version $DOCKER_VERSION is not available.${C_DEFAULT}"
-      echo -e "${C_PURPLE}Available versions are:\n$available_versions${C_DEFAULT}"
-      exit 1
-    fi
-  fi
-
-  sudo usermod -aG docker ${USER}
-  sudo systemctl enable docker
-  sudo systemctl start docker
-  docker --version
+  echo -e "${C_GREEN}Docker installed via get.docker.com. If 'docker' requires sudo, log out/in or run 'newgrp docker'.${C_DEFAULT}"
 }
 
 docker_compose_install() {
