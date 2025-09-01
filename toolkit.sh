@@ -9,12 +9,12 @@ set -e
 USER=$(whoami)
 LIB_SCRIPT="_lib.sh"
 
-# Function: mount_disk
+# Function: disk_mount
 # Purpose: This function mounts a disk to a specified directory. 
 #          It prompts the user to format the disk if needed, creates a mount point, mounts the device, 
 #          and updates the fstab file for persistent mounting.
 # 
-mount_disk() {
+disk_mount() {
   # Prompt for mount directory and device name
   _prompt_for_input_ MOUNT_DIR "Please enter mount directory full path" true
   _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
@@ -109,10 +109,10 @@ mount_disk() {
   sudo mount -a
 }
 
-# Function: resize_disk
+# Function: disk_resize
 # Purpose: This function resizes the filesystem on a specified disk device.
 #          It prompts the user for the device name, then uses `resize2fs` to resize the filesystem to utilize all available space on the disk.
-resize_disk() {
+disk_resize() {
   _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
   device_path="/dev/$DEVICE_NAME"
   
@@ -156,10 +156,10 @@ rsync() {
 
 }
 
-# Function: add_ssh_key
+# Function: ssh_key_add
 # Purpose: This function adds an SSH private key to the SSH agent and sets appropriate file permissions.
 #          It prompts the user for the key's file path, validates its existence, and then adds it to the SSH agent.
-add_ssh_key() {
+ssh_key_add() {
   _prompt_for_input_ SSH_KEY_PATH "Please enter the full path of your SSH private key" true
   
   if [ ! -f "$SSH_KEY_PATH" ]; then
@@ -173,7 +173,7 @@ add_ssh_key() {
   echo -e "${C_GREEN} SSH key added and permissions set.${C_DEFAULT}"
 }
 
-# Function: extract
+# Function: gzip_extract
 # Purpose: Recursively and in parallel, extract all supported archive files (.zip, .rar, .7z, .tar, .tar.gz, .tar.bz2) from an input directory to an output directory.
 #          It preserves folder hierarchy, logs successes and failures to a 'meta' directory, handles nested archives, avoids double-nesting, and cleans up temporary files.
 #          The temporary directory is created inside the output directory, and parallelization is handled with background jobs.
@@ -181,7 +181,7 @@ add_ssh_key() {
 #   $1: Input directory path.
 #   $2: Output directory path.
 #   $3: (Optional) Number of parallel threads to use (default: 4).
-extract() {
+gzip_extract() {
   # --- Argument and Variable Setup ---
   local INPUT_DIR="${1}"
   local OUTPUT_DIR="${2}"
@@ -549,12 +549,12 @@ main () {
   source $LIB_SCRIPT
 
   declare -a FUNCTIONS=(
-    mount_disk
-    resize_disk
+    disk_mount
+    disk_resize
     rsync
-    add_ssh_key
-    extract
+    ssh_key_add
     dir_balance
+    gzip_extract
     gzip_dir
   )
   
