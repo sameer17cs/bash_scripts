@@ -86,10 +86,19 @@ mount_disk() {
     exit 1
   fi
 
-  # Add fstab entry with defaults
-  line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $filesystem_type defaults 0 2"
-  echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
-  echo -e "${C_BLUE}Added entry in fstab${C_DEFAULT}"
+  # Ask user if they want to add entry to fstab (defaults to no)
+  local ADD_TO_FSTAB
+  _prompt_for_input_ ADD_TO_FSTAB "Add mount entry to /etc/fstab for persistent mounting? (y/N)" false
+  ADD_TO_FSTAB=${ADD_TO_FSTAB:-n}  # Default to 'n' if empty
+  
+  if [[ "${ADD_TO_FSTAB,,}" == "y" || "${ADD_TO_FSTAB,,}" == "yes" ]]; then
+    # Add fstab entry with defaults
+    line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $filesystem_type defaults 0 2"
+    echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
+    echo -e "${C_BLUE}Added entry in fstab${C_DEFAULT}"
+  else
+    echo -e "${C_YELLOW}Skipping fstab entry - mount will not persist after reboot${C_DEFAULT}"
+  fi
 
   # Cleanup
   echo -e "${C_BLUE}Changing directory owner to $USER${C_DEFAULT}"
