@@ -146,9 +146,11 @@ nginx() {
     echo -e "${C_BLUE}${nginx_test_output}${C_DEFAULT}"
   fi
 
+echo "1"
   # Reload config cleanly (avoid systemctl hang)
   timeout 5s sudo nginx -s reload || sudo systemctl restart nginx
 
+echo "2"
   # Report installed version and config locations
   nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
   echo -e "${C_GREEN}Installed: ${nginx_ver}${C_DEFAULT}"
