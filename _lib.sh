@@ -75,7 +75,7 @@ _print_array_() {
 #   echo "$mb_value"  # Output: 1.0
 #
 # -------------------------------------------------------------------------
-bytes_to_mb() {
+function bytes_to_mb() {
   local bytes=$1
   local result=$(echo "scale=2; $bytes / 1024 / 1024" | bc -l 2>/dev/null || echo "0")
   # Add leading zero if result starts with decimal point
@@ -83,6 +83,24 @@ bytes_to_mb() {
     echo "0$result"
   else
     echo "$result"
+  fi
+}
+
+# Set cron job
+# Takes schedule and command as parameters
+# Wraps command with sudo and ubuntu user
+# Adds cron job to crontab
+function _set_cron_() {
+  local schedule="$1"
+  local cmd="$2"
+  local wrapped_cmd="sudo -H -u ubuntu bash -c '$cmd'"
+  local cron_entry="${schedule} ${wrapped_cmd}"
+
+  if crontab -l 2>/dev/null | grep -qF "$cron_entry"; then
+    echo -e "${C_BLUE}Cron job already exists: $cron_entry${C_DEFAULT}"
+  else
+    (crontab -l 2>/dev/null; echo "$cron_entry") | crontab -
+    echo -e "${C_GREEN}Cron job added: $cron_entry${C_DEFAULT}"
   fi
 }
 
