@@ -100,7 +100,6 @@ nginx() {
 
   sudo ufw allow 80/tcp
   sudo ufw allow 443/tcp
-  sudo ufw allow 'Nginx Full'
 
   _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
@@ -115,7 +114,7 @@ nginx() {
   # Enable and start nginx, verify config, then reload
   sudo systemctl enable --now nginx
   sudo nginx -t
-  (sudo systemctl reload nginx) || (sudo systemctl restart nginx)
+  sudo systemctl restart nginx
 }
 
 nginx_certbot() {
