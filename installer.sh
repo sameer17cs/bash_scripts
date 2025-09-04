@@ -93,6 +93,21 @@ purge_docker() {
 
 nginx() {
   sudo apt update -y
+  # Add official nginx.org repo to get the latest nginx (stable/mainline)
+  . /etc/os-release
+  codename="${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null || echo focal)}"
+  sudo mkdir -p /usr/share/keyrings
+  curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu/ $codename nginx" | sudo tee /etc/apt/sources.list.d/nginx.list >/dev/null
+  # Prefer nginx.org packages over Ubuntu's
+  # Use a tab-indented heredoc; the '-' strips leading TABs in the body
+  sudo tee /etc/apt/preferences.d/99nginx >/dev/null <<-'EOF'
+	Package: *
+	Pin: origin nginx.org
+	Pin-Priority: 900
+	EOF
+  
+  sudo apt-get update -y
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
   sudo ufw allow 'Nginx Full'
   
