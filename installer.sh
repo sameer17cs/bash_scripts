@@ -183,7 +183,7 @@ nginx_certbot() {
   # Prepare the domain arguments for certbot
   DOMAIN_ARGS=""
   for DOMAIN in "${DOMAIN_NAMES[@]}"; do
-    DOMAIN_ARGS="$DOMAIN_ARGS -d $DOMAIN -d www.$DOMAIN"
+    DOMAIN_ARGS="$DOMAIN_ARGS -d $DOMAIN "
   done
 
   # Run certbot with the collected domain names
