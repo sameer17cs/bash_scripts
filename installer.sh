@@ -105,7 +105,7 @@ nginx() {
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
     echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
-    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
+    (sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk) || true
     sudo cp "$NGINX_CONFIG_PATH" /etc/nginx/sites-available/default
   else 
     echo "you choose to use default nginx config"
