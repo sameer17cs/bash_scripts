@@ -92,10 +92,8 @@ purge_docker() {
 }
 
 nginx() {
-  #https://www.linuxcapable.com/how-to-install-nginx-mainline-on-ubuntu-22-04-lts/
-  sudo add-apt-repository ppa:ondrej/nginx-mainline -y
   sudo apt update -y
-  sudo apt install nginx -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
   sudo ufw allow 'Nginx Full'
   
   _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
