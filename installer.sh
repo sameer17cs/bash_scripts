@@ -9,7 +9,7 @@ set -e
 
 LIB_SCRIPT="_lib.sh"
 
-docker_install() {
+function docker_install() {
   echo "Installing Docker via official convenience script..."
 
   # Optional channel prompt (stable/test)
@@ -37,7 +37,7 @@ docker_install() {
   echo -e "${C_GREEN}Docker installed via get.docker.com. If 'docker' requires sudo, log out/in or run 'newgrp docker'.${C_DEFAULT}"
 }
 
-docker_compose_install() {
+function docker_compose_install() {
   _prompt_for_input_ COMPOSE_VERSION "Docker Compose version to install (leave empty for the latest version)"
 
   if [ -z "$COMPOSE_VERSION" ]; then
@@ -59,7 +59,7 @@ docker_compose_install() {
   docker-compose --version
 }
 
-docker_registry() {
+function docker_registry() {
 
   _prompt_for_input_ DOCKER_SSL_DIR "Enter SSL certificate directory path" true
   echo "SSL directory is $DOCKER_SSL_DIR"
@@ -81,7 +81,7 @@ docker_registry() {
     registry:2
 }
 
-purge_docker() {
+function purge_docker() {
   sudo systemctl stop docker || true
   sudo apt-get purge -y docker-engine docker docker.io docker-ce
   sudo apt-get autoremove -y --purge docker-engine docker docker.io docker-ce
@@ -93,9 +93,12 @@ purge_docker() {
 
 # Install official nginx.org build 
 # place custom config into /etc/nginx/conf.d/default.conf
-nginx() {
+function nginx() {
 
   local config_file="/etc/nginx/conf.d/default.conf"
+
+  # Prompt for custom config path (leave empty to keep default)
+  _prompt_for_input_ CUSTOM_CONFIG_PATH "custom configuration filepath (leave empty for default)"
   
   # Prereqs
   sudo apt-get update -y
@@ -118,9 +121,6 @@ nginx() {
   # Firewall: nginx.org packages don't ship UFW profiles; open ports directly.
   sudo ufw allow 80/tcp
   sudo ufw allow 443/tcp
-
-  # Prompt for custom config path (leave empty to keep default)
-  _prompt_for_input_ CUSTOM_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
   if [ -n "$CUSTOM_CONFIG_PATH" ] && [ -e "$CUSTOM_CONFIG_PATH" ]; then
     echo -e "${C_BLUE}Applying configuration from $CUSTOM_CONFIG_PATH to $config_file${C_DEFAULT}"
@@ -155,7 +155,7 @@ nginx() {
   echo -e "${C_BLUE}Site config: $config_file${C_DEFAULT}"
 }
 
-nginx_certbot() {
+function nginx_certbot() {
   # Always use upstream layout (nginx.org): /etc/nginx/conf.d/default.conf
   local config_file="/etc/nginx/conf.d/default.conf"
 
@@ -191,7 +191,7 @@ nginx_certbot() {
   sudo service nginx restart
 }
 
-mongodb() {
+function mongodb() {
   local container_name="mongodb"
 
   _prompt_for_input_ DATADIR "Enter MongoDB data directory full path" true
@@ -216,7 +216,7 @@ mongodb() {
   echo -e "${C_BLUE}Mongodb version $MONGODB_VERSION${C_DEFAULT}"
 }
 
-mysql() {
+function mysql() {
   local container_name="mysql"
 
   _prompt_for_input_ MYSQL_DATADIR "Enter MySQL data directory full path" true
@@ -233,7 +233,7 @@ mysql() {
   echo -e "${C_BLUE}MySQL version $MYSQL_VERSION${C_DEFAULT}"
 }
 
-redis () {
+function redis () {
 
   local container_name="redis"
   
@@ -252,7 +252,7 @@ redis () {
   echo -e "${C_BLUE}Redis version: $REDIS_VERSION${C_DEFAULT}"
 }
 
-elastic_kibana() {
+function elastic_kibana() {
   ############################
   # Install Elasticsearch without password (security disabled)
   ############################
@@ -393,7 +393,7 @@ elastic_kibana() {
   fi
 }
 
-neo4j () {
+function neo4j () {
 
   local username="neo4j"
   local container_name="neo4j"
@@ -429,7 +429,7 @@ neo4j () {
   echo -e "${C_BLUE} Username: $username, Password: $PWD${C_DEFAULT}"
 }
 
-redash() {
+function redash() {
   local compose_file="docker_compose/redash.yml"
 
   _prompt_for_input_ DATADIR "Enter the base data directory for Redash" true
@@ -455,7 +455,7 @@ redash() {
 
 }
 
-metabase () {
+function metabase () {
 
   local container_name="metabase"
 
@@ -473,7 +473,7 @@ metabase () {
   echo -e "${C_GREEN}Metabase version $METABASE_VERSION${C_DEFAULT}"
 }
 
-ensure_directory_exists() {
+function ensure_directory_exists() {
   local dir_path="$1"
   if [ ! -d "$dir_path" ]; then
     mkdir -p "$dir_path"
@@ -486,7 +486,7 @@ ensure_directory_exists() {
   fi
 }
 
-main() {
+function main() {
 
   local option_selected=$1
 

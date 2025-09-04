@@ -75,7 +75,7 @@ _print_array_() {
 #   echo "$mb_value"  # Output: 1.0
 #
 # -------------------------------------------------------------------------
-bytes_to_mb() {
+function bytes_to_mb() {
   local bytes=$1
   local result=$(echo "scale=2; $bytes / 1024 / 1024" | bc -l 2>/dev/null || echo "0")
   # Add leading zero if result starts with decimal point
