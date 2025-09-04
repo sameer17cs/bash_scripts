@@ -106,10 +106,11 @@ nginx() {
 	Pin: origin nginx.org
 	Pin-Priority: 900
 	EOF
-  
+
   sudo apt-get update -y
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
-  sudo ufw allow 'Nginx Full'
+  sudo ufw allow 80/tcp
+  sudo ufw allow 443/tcp
   
   _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
