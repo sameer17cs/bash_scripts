@@ -189,6 +189,13 @@ function nginx_certbot() {
   # Run certbot with the collected domain names
   sudo certbot --nginx $DOMAIN_ARGS
   sudo service nginx restart
+
+  read -p "Add weekly certbot renew cron? (Y/n, Default: Y): " ans
+  ans=${ans:-Y}
+  if [[ $ans =~ ^[Yy]$ ]]; then
+    local certbot_cmd="sudo certbot renew --no-self-upgrade"
+    _set_cron_ "0 0 * * 0" "$certbot_cmd"
+  fi
 }
 
 function mongodb() {

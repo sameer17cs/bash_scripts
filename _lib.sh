@@ -86,6 +86,24 @@ function bytes_to_mb() {
   fi
 }
 
+# Set cron job
+# Takes schedule and command as parameters
+# Wraps command with sudo and ubuntu user
+# Adds cron job to crontab
+function _set_cron_() {
+  local schedule="$1"
+  local cmd="$2"
+  local wrapped_cmd="sudo -H -u ubuntu bash -c '$cmd'"
+  local cron_entry="${schedule} ${wrapped_cmd}"
+
+  if crontab -l 2>/dev/null | grep -qF "$cron_entry"; then
+    echo -e "${C_BLUE}Cron job already exists: $cron_entry${C_DEFAULT}"
+  else
+    (crontab -l 2>/dev/null; echo "$cron_entry") | crontab -
+    echo -e "${C_GREEN}Cron job added: $cron_entry${C_DEFAULT}"
+  fi
+}
+
 # Define color codes for easy reference
 C_RED="\033[0;31m"
 C_GREEN="\033[0;32m"
