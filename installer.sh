@@ -105,7 +105,9 @@ nginx() {
   . /etc/os-release
   codename="${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null || echo focal)}"
   sudo mkdir -p /usr/share/keyrings
-  curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
+  curl -fsSL https://nginx.org/keys/nginx_signing.key \
+    | gpg --batch --yes --dearmor \
+    | sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
   echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu/ $codename nginx" | sudo tee /etc/apt/sources.list.d/nginx.list >/dev/null
   sudo apt-get update -y
 
