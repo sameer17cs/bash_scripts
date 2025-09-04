@@ -91,42 +91,64 @@ purge_docker() {
   sudo apt autoremove -y
 }
 
+# Install official nginx.org build 
+# place custom config into /etc/nginx/conf.d/default.conf
 nginx() {
-  # Install nginx from Ubuntu repositories (not nginx.org) using the latest available version.
+
+  local config_file="/etc/nginx/conf.d/default.conf"
+  
+  # Prereqs
+  sudo apt-get update -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl gnupg ca-certificates lsb-release
+
+  # Add nginx.org repo (idempotent)
+  . /etc/os-release
+  codename="${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null || echo focal)}"
+  sudo mkdir -p /usr/share/keyrings
+  curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu/ $codename nginx" | sudo tee /etc/apt/sources.list.d/nginx.list >/dev/null
   sudo apt-get update -y
 
-  echo -e "${C_BLUE}Installing Ubuntu's latest nginx from default repositories${C_DEFAULT}"
+  # Install upstream nginx (no Debian layout)
+  echo -e "${C_BLUE}Installing official nginx.org package${C_DEFAULT}"
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
 
+  # Firewall: nginx.org packages don't ship UFW profiles; open ports directly.
   sudo ufw allow 80/tcp
   sudo ufw allow 443/tcp
 
-  _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
+  # Prompt for custom config path (leave empty to keep default)
+  _prompt_for_input_ CUSTOM_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
-  if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
-    echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
-    (sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk) || true
-    sudo cp "$NGINX_CONFIG_PATH" /etc/nginx/sites-available/default
-  else 
-    echo "you choose to use default nginx config"
+  if [ -n "$CUSTOM_CONFIG_PATH" ] && [ -e "$CUSTOM_CONFIG_PATH" ]; then
+    echo -e "${C_BLUE}Applying configuration from $CUSTOM_CONFIG_PATH to $config_file${C_DEFAULT}"
+    sudo mkdir -p /etc/nginx/conf.d
+
+    # Take backup of original config
+    [ -f "$config_file" ] && sudo cp "$config_file" "${config_file}.bk" || true
+    
+    # Copy new config
+    sudo cp "$CUSTOM_CONFIG_PATH" "$config_file"
+  else
+    echo "using default nginx config"
   fi
 
-  # Enable and start nginx, verify config, then reload
+  # Enable & validate
   sudo systemctl enable --now nginx
-  sudo nginx -t
-  sudo systemctl restart nginx
+  if ! sudo nginx -t; then
+    echo -e "${C_RED}Nginx configuration test failed.${C_DEFAULT}"
+  fi
+  sudo systemctl reload nginx
+
+  # Report installed version and config locations
+  nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
+  echo -e "${C_GREEN}Installed: ${nginx_ver}${C_DEFAULT}"
+  echo -e "${C_BLUE}Site config: $config_file${C_DEFAULT}"
 }
 
 nginx_certbot() {
-  _prompt_for_input_ NGINX_CONFIG_PATH "Nginx configuration filepath (leave empty for default)"
-
-  if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
-    echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
-    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
-    sudo cp $NGINX_CONFIG_PATH /etc/nginx/sites-available/default
-  else
-    echo "You chose to use the default Nginx config"
-  fi
+  # Always use upstream layout (nginx.org): /etc/nginx/conf.d/default.conf
+  local config_file="/etc/nginx/conf.d/default.conf"
 
   # Initialize an array to hold domain names
   DOMAIN_NAMES=()
