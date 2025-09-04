@@ -137,8 +137,13 @@ nginx() {
 
   # Enable & validate
   sudo systemctl enable --now nginx
-  if ! sudo nginx -t; then
-    echo -e "${C_RED}Nginx configuration test failed.${C_DEFAULT}"
+  # Run config test, capture output & status
+  local nginx_test_output=$(sudo nginx -t 2>&1)
+  nginx_test_rc=$?
+  if [ $nginx_test_rc -ne 0 ]; then
+    echo -e "${C_RED}Nginx configuration test failed:${C_DEFAULT}\n${nginx_test_output}"
+  else
+    echo -e "${C_BLUE}${nginx_test_output}${C_DEFAULT}"
   fi
 
   # Reload config cleanly (avoid systemctl hang)
