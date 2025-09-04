@@ -153,8 +153,12 @@ echo "1"
 echo "2"
   # Report installed version and config locations
   nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
+
+  echo "3"
   echo -e "${C_GREEN}Installed: ${nginx_ver}${C_DEFAULT}"
+  echo "4"
   echo -e "${C_BLUE}Site config: $config_file${C_DEFAULT}"
+  echo "5"
 }
 
 nginx_certbot() {
