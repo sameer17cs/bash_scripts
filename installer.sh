@@ -146,19 +146,13 @@ nginx() {
     echo -e "${C_BLUE}${nginx_test_output}${C_DEFAULT}"
   fi
 
-echo "1"
   # Reload config cleanly (avoid systemctl hang)
-  timeout 5s sudo nginx -s reload || sudo systemctl restart nginx
-
-echo "2"
+  (timeout 5s sudo nginx -s reload) || (sudo systemctl restart nginx)
   # Report installed version and config locations
   nginx_ver=$(command nginx -v </dev/null 2>&1 | sed 's/^nginx version: //')
 
-  echo "3"
   echo -e "${C_GREEN}Installed: ${nginx_ver}${C_DEFAULT}"
-  echo "4"
   echo -e "${C_BLUE}Site config: $config_file${C_DEFAULT}"
-  echo "5"
 }
 
 nginx_certbot() {
