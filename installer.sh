@@ -152,7 +152,7 @@ echo "1"
 
 echo "2"
   # Report installed version and config locations
-  nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
+  nginx_ver=$(command nginx -v </dev/null 2>&1 | sed 's/^nginx version: //')
 
   echo "3"
   echo -e "${C_GREEN}Installed: ${nginx_ver}${C_DEFAULT}"
