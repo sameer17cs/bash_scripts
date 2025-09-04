@@ -92,39 +92,30 @@ purge_docker() {
 }
 
 nginx() {
-  sudo apt update -y
-  # Add official nginx.org repo to get the latest nginx (stable/mainline)
-  . /etc/os-release
-  codename="${VERSION_CODENAME:-$(lsb_release -cs 2>/dev/null || echo focal)}"
-  sudo mkdir -p /usr/share/keyrings
-  curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
-  echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu/ $codename nginx" | sudo tee /etc/apt/sources.list.d/nginx.list >/dev/null
-  # Prefer nginx.org packages over Ubuntu's
-  # Use a tab-indented heredoc; the '-' strips leading TABs in the body
-  sudo tee /etc/apt/preferences.d/99nginx >/dev/null <<-'EOF'
-	Package: *
-	Pin: origin nginx.org
-	Pin-Priority: 900
-	EOF
-
+  # Install nginx from Ubuntu repositories (not nginx.org) using the latest available version.
   sudo apt-get update -y
+
+  echo -e "${C_BLUE}Installing Ubuntu's latest nginx from default repositories${C_DEFAULT}"
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+
   sudo ufw allow 80/tcp
   sudo ufw allow 443/tcp
-  
+  sudo ufw allow 'Nginx Full'
+
   _prompt_for_input_ NGINX_CONFIG_PATH "custom configuration filepath (leave empty for default)"
 
   if [ -n "$NGINX_CONFIG_PATH" ] && [ -e "$NGINX_CONFIG_PATH" ]; then
     echo -e "${C_BLUE}copying configuration file from $NGINX_CONFIG_PATH${C_DEFAULT}"
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bk
-    sudo cp $NGINX_CONFIG_PATH /etc/nginx/sites-available/default
+    sudo cp "$NGINX_CONFIG_PATH" /etc/nginx/sites-available/default
   else 
     echo "you choose to use default nginx config"
   fi
 
-  sudo systemctl reload nginx
-  sudo systemctl enable nginx
+  # Enable and start nginx, verify config, then reload
+  sudo systemctl enable --now nginx
   sudo nginx -t
+  (sudo systemctl reload nginx) || (sudo systemctl restart nginx)
 }
 
 nginx_certbot() {
