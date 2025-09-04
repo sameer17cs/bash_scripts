@@ -147,7 +147,7 @@ nginx() {
   fi
 
   # Reload config cleanly (avoid systemctl hang)
-  sudo nginx -s reload
+  timeout 5s sudo nginx -s reload || sudo systemctl restart nginx
 
   # Report installed version and config locations
   nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
