@@ -140,7 +140,9 @@ nginx() {
   if ! sudo nginx -t; then
     echo -e "${C_RED}Nginx configuration test failed.${C_DEFAULT}"
   fi
-  sudo systemctl reload nginx
+
+  # Reload config cleanly (avoid systemctl hang)
+  sudo nginx -s reload
 
   # Report installed version and config locations
   nginx_ver=$(nginx -v 2>&1 | sed 's/^nginx version: //')
