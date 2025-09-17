@@ -100,13 +100,19 @@ disk_mount() {
     echo -e "${C_YELLOW}Skipping fstab entry - mount will not persist after reboot${C_DEFAULT}"
   fi
 
-  # Cleanup
-  echo -e "${C_BLUE}Changing directory owner to $USER${C_DEFAULT}"
-  sudo chown -R $USER:$USER $MOUNT_DIR
-  echo -e "${C_GREEN}Disk mount success!${C_DEFAULT}"
+  # Ask user if they want to change directory owner (defaults to no)
+  local CHANGE_OWNER
+  _prompt_for_input_ CHANGE_OWNER "Change directory owner to $USER? (y/N)" false
+  CHANGE_OWNER=${CHANGE_OWNER:-n}  # Default to 'n' if empty
+  
+  if [[ "${CHANGE_OWNER,,}" == "y" || "${CHANGE_OWNER,,}" == "yes" ]]; then
+    echo -e "${C_BLUE}Changing directory owner to $USER${C_DEFAULT}"
+    sudo chown -R $USER:$USER $MOUNT_DIR
+  fi
 
   # Test mount
   sudo mount -a
+  echo -e "${C_GREEN}Disk mount success!${C_DEFAULT}"
 }
 
 # Function: disk_resize
