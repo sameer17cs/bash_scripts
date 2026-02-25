@@ -121,10 +121,23 @@ disk_mount() {
 disk_resize() {
   _prompt_for_input_ DEVICE_NAME "Please enter device name (run lsblk)" true
   device_path="/dev/$DEVICE_NAME"
-  
-  echo -e "${C_BLUE} Resizing filesystem on $device_path...${C_DEFAULT}"
-  sudo resize2fs $device_path
-  echo -e "${C_GREEN} Filesystem resize completed on $device_path.${C_DEFAULT}"
+
+  fs_type=$(sudo blkid -s TYPE -o value "$device_path" 2>/dev/null)
+  if [ -z "$fs_type" ]; then
+    echo -e "${C_RED}No filesystem found on $device_path. Disk may not be formatted.${C_DEFAULT}"
+    exit 1
+  fi
+
+  echo -e "${C_BLUE}Detected $fs_type on $device_path, resizing...${C_DEFAULT}"
+
+  case "$fs_type" in
+    ext2|ext3|ext4) sudo resize2fs "$device_path" ;;
+    xfs)            sudo xfs_growfs "$device_path" ;;
+    btrfs)          sudo btrfs filesystem resize max "$device_path" ;;
+    *)              echo -e "${C_RED}Unsupported filesystem: $fs_type${C_DEFAULT}"; exit 1 ;;
+  esac
+
+  echo -e "${C_GREEN}Filesystem resize completed on $device_path.${C_DEFAULT}"
 }
 
 # Function: rsync
