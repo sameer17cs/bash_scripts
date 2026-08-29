@@ -92,10 +92,14 @@ disk_mount() {
   ADD_TO_FSTAB=${ADD_TO_FSTAB:-n}  # Default to 'n' if empty
   
   if [[ "${ADD_TO_FSTAB,,}" == "y" || "${ADD_TO_FSTAB,,}" == "yes" ]]; then
-    # Add fstab entry with defaults
-    line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $filesystem_type defaults 0 2"
-    echo -e "$line_for_fstab\n" | sudo tee -a /etc/fstab
-    echo -e "${C_BLUE}Added entry in fstab${C_DEFAULT}"
+    # Skip if an entry for this UUID already exists to avoid duplicates
+    if grep -q "^UUID=$uuid_for_fstab[[:space:]]" /etc/fstab; then
+      echo -e "${C_YELLOW}fstab already has an entry for UUID $uuid_for_fstab, skipping${C_DEFAULT}"
+    else
+      line_for_fstab="UUID=$uuid_for_fstab $MOUNT_DIR $filesystem_type defaults 0 2"
+      echo "$line_for_fstab" | sudo tee -a /etc/fstab
+      echo -e "${C_BLUE}Added entry in fstab${C_DEFAULT}"
+    fi
   else
     echo -e "${C_YELLOW}Skipping fstab entry - mount will not persist after reboot${C_DEFAULT}"
   fi
